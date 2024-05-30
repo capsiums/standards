@@ -1,0 +1,146 @@
+=== User authentication
+
+==== General
+
+General user authentication requirements apply to all methods and provide a foundation for secure access control.
+
+Example:
+[source,json]
+----
+{
+    "authentication": {
+        "basicAuth": {
+            "enabled": true,
+            "passwdFile": "path/to/.htpasswd"
+        },
+        "oauth": {
+            "enabled": true,
+            "provider": "Google",
+            "clientId": "your-client-id",
+            "clientSecret": "your-client-secret",
+            "redirectUri": "your-redirect-uri"
+        }
+    }
+}
+----
+
+==== Requirements and Specifications
+
+User ID and Password:: Each user must have a unique User ID and a strong password.
+Password Policy:: Enforce strong password policies, including:
+  - Minimum length: 8 characters
+  - At least one uppercase letter, one lowercase letter, one digit, and one special character
+Account Lockout:: Implement account lockout after a specified number of failed login attempts (e.g., 5 attempts).
+Session Management:: Secure session management with timeout and automatic logout after a period of inactivity.
+Encryption:: All authentication data should be encrypted during transmission and storage.
+
+==== Apache Authentication (passwd)
+
+Apache authentication using `passwd` involves basic HTTP authentication with user credentials stored in a `.htpasswd` file.
+
+===== Requirements and Specifications
+
+File Location:: The `.htpasswd` file must be securely stored and accessible only to the web server.
+Encryption:: Passwords in the `.htpasswd` file should be hashed using a secure algorithm (e.g., bcrypt).
+Configuration:: Apache configuration to support basic authentication using the `.htpasswd` file.
+
+===== Configuration Details
+
+.htpasswd File::
+  - Use the `htpasswd` utility to create and manage the file.
+  - Example entry: `username:$apr1$eWvS2f3d$Ee9uU7/r8C3W1J9QkE45H0`
+
+- *Apache Configuration* (`.htaccess` or `httpd.conf`):
+  ```
+  AuthType Basic
+  AuthName "Restricted Access"
+  AuthUserFile /path/to/.htpasswd
+  Require valid-user
+  ```
+
+==== External Authentication via OAuth
+
+External authentication via OAuth involves delegating the authentication process to an external OAuth provider (e.g., Google, Facebook).
+
+===== Requirements and Specifications
+
+OAuth Provider:: Select a trusted OAuth provider (e.g., Google, Facebook, GitHub).
+Client ID and Secret:: Obtain a Client ID and Secret from the OAuth provider.
+Redirect URI:: Configure a redirect URI on the OAuth provider's dashboard that points to your application's OAuth callback endpoint.
+Scope:: Define the scope of access (e.g., email, profile).
+State Parameter:: Use the state parameter to prevent CSRF attacks.
+Token Management:: Securely manage and store OAuth tokens.
+Secret Protection:: The OAuth secret must be kept protected from users who can extract the package. This includes storing the secret in a secure environment variable or a secure server-side configuration file, not within the package itself.
+
+===== Configuration Details in `oauth_config.json`
+
+```json
+{
+  "oauth": {
+    "provider": "Google",
+    "clientId": "YOUR_CLIENT_ID",
+    "clientSecret": "${OAUTH_CLIENT_SECRET}",
+    "redirectUri": "https://yourapp.com/oauth/callback",
+    "scope": ["email", "profile"],
+    "stateSecret": "YOUR_STATE_SECRET"
+  }
+}
+```
+
+===== Secret Protection
+
+To protect the OAuth secret from users who can extract the package:
+- Store the `clientSecret` in a secure environment variable (`OAUTH_CLIENT_SECRET`) instead of hardcoding it in the configuration file.
+- Ensure that the `oauth_config.json` file references the environment variable for the `clientSecret`.
+- On the server side, configure the environment variable securely and load it during application startup.
+
+
+==== Combined Configuration Example
+
+Here is a combined configuration example that includes general requirements, Apache authentication, and OAuth configuration.
+
+`authentication.json`
+
+```json
+{
+  "authentication": {
+    "general": {
+      "passwordPolicy": {
+        "minLength": 8,
+        "requireUppercase": true,
+        "requireLowercase": true,
+        "requireDigit": true,
+        "requireSpecialCharacter": true
+      },
+      "accountLockout": {
+        "threshold": 5,
+        "duration": 30
+      },
+      "sessionManagement": {
+        "timeout": 30,
+        "autoLogout": true
+      },
+      "encryption": "AES-256"
+    },
+    "apache": {
+      "htpasswdFile": "/path/to/.htpasswd",
+      "encryptionAlgorithm": "bcrypt"
+    },
+    "oauth": {
+      "provider": "Google",
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "${OAUTH_CLIENT_SECRET}",
+      "redirectUri": "https://yourapp.com/oauth/callback",
+      "scope": ["email", "profile"],
+      "stateSecret": "YOUR_STATE_SECRET"
+    }
+  }
+}
+```
+
+general::: Specifies general authentication requirements,
+general::: Specifies general authentication requirements, including password policy, account lockout, session management, and encryption.
+apache::: Details Apache authentication configuration, including the path to the `.htpasswd` file and the encryption algorithm used for passwords.
+oauth::: Configures external authentication via OAuth, including the OAuth provider, client ID, client secret (referenced from an environment variable), redirect URI, scope, and state secret.
+
+This comprehensive configuration ensures that user authentication is secure, flexible, and compliant with best practices, while also protecting sensitive information such as the OAuth secret from being exposed.

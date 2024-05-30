@@ -1,0 +1,379 @@
+== Capsium package
+
+The Capsium package is the fundamental unit of deployment within the Capsium
+framework. This clause details the structure, contents, and specifications of a
+Capsium package, ensuring a comprehensive understanding of its components and
+functionality.
+
+=== General
+
+A Capsium package is a compressed, single-file deployable object that contains
+all the necessary files for a static site. It is designed to be easily built,
+inspected, extracted, and deployed across various platforms. The package ensures
+that all resources, metadata, and configurations required for site deployment
+are self-contained within it.
+
+Description:: A Capsium package encapsulates a static website, including HTML, CSS, JS, media files, and potentially a data store.
+MIME type:: The MIME type for a Capsium package is `application/vnd.capsium.package`.
+File extension:: The standard file extension for a Capsium package is `.cap`.
+
+
+include::05x-structure.adoc[]
+
+include::05x-metadata.adoc[]
+
+include::05x-manifest.adoc[]
+
+include::05x-root.adoc[]
+
+include::05x-resources.adoc[]
+
+include::05x-routing.adoc[]
+
+include::05x-storage.adoc[]
+
+include::05x-security.adoc[]
+
+include::05x-validation.adoc[]
+
+include::05x-testing.adoc[]
+
+include::05x-packaging.adoc[]
+
+include::05x-authentication.adoc[]
+
+
+
+
+// == Implementation
+
+
+// The implementation of the Capsium package involves creating the necessary files and structures as specified. Below are the steps to create a basic Capsium package:
+
+// . Create the root file (`index.html`):
+// [source,html]
+// ----
+//    <!DOCTYPE html>
+//    <html lang="en">
+//    <head>
+//        <meta charset="UTF-8">
+//        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//        <title>Capsium Package</title>
+//        <link rel="stylesheet" href="styles.css">
+//    </head>
+//    <body>
+//        <h1>Welcome to the Capsium Package</h1>
+//        <script src="app.js"></script>
+//    </body>
+//    </html>
+// ----
+
+// . Create the manifest file (`manifest.json`):
+// [source,json]
+// ----
+//    {
+//        "name": "example-capsium-package",
+//        "version": "1.0.0",
+//        "description": "A sample Capsium package",
+//        "main": "index.html",
+//        "resources": {
+//            "styles.css": {
+//                "type": "text/css",
+//                "version": "1.0.0"
+//            },
+//            "app.js": {
+//                "type": "application/javascript",
+//                "version": "1.0.0"
+//            }
+//        },
+//        "dependencies": {
+//            "other-package.capsium": ">=1.0.0"
+//        }
+//    }
+// ----
+
+// . Create resource routing files (`routes.json` and `api-routes.json`):
+// [source,json]
+// ----
+//    {
+//        "routes": {
+//            "/api/data": {
+//                "method": "GET",
+//                "response": "data.json"
+//            }
+//        }
+//    }
+// ----
+
+// [source,json]
+// ----
+//    {
+//        "apiRoutes": {
+//            "/api/users": {
+//                "method": "GET",
+//                "handler": "usersHandler"
+//            },
+//            "/api/update": {
+//                "method": "POST",
+//                "handler": "updateHandler"
+//            }
+//        }
+//    }
+// ----
+
+// . Create the HTTP API configuration file (`http-api.json`):
+// [source,json]
+// ----
+//    {
+//        "headers": {
+//            "Content-Security-Policy": "default-src 'self';",
+//            "X-Content-Type-
+// [source,json]
+// ----
+//        "X-Content-Type-Options": "nosniff",
+//            "X-Frame-Options": "DENY",
+//            "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+//        },
+//        "responses": {
+//            "200": {
+//                "description": "Successful operation",
+//                "content": {
+//                    "application/json": {
+//                        "schema": {
+//                            "type": "object",
+//                            "properties": {
+//                                "message": {
+//                                    "type": "string"
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+// ----
+
+// . Create the storage configuration file (`storage.json`):
+// [source,json]
+// ----
+//    {
+//        "storage": {
+//            "layers": [
+//                "base-layer",
+//                "overlay-layer"
+//            ],
+//            "staticFiles": [
+//                "index.html",
+//                "styles.css",
+//                "app.js"
+//            ],
+//            "databases": [
+//                {
+//                    "name": "mainDB",
+//                    "type": "sqlite",
+//                    "file": "main.db"
+//                }
+//            ]
+//        }
+//    }
+// ----
+
+// . Create the security configuration file (`security.json`):
+// [source,json]
+// ----
+//    {
+//        "security": {
+//            "digitalSignatures": {
+//                "publicKey": "path/to/public.key",
+//                "signatureFile": "package.sig"
+//            },
+//            "integrityChecks": {
+//                "checksumAlgorithm": "SHA-256",
+//                "checksums": {
+//                    "index.html": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+//                    "styles.css": "e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
+//                }
+//            },
+//            "sandboxing": {
+//                "enabled": true,
+//                "parameters": {
+//                    "memoryLimit": "512MB",
+//                    "cpuLimit": "2"
+//                }
+//            }
+//        }
+//    }
+// ----
+
+// . Create the encryption configuration file (`encryption.json`):
+// [source,json]
+// ----
+//    {
+//        "encryption": {
+//            "publicKeyFile": "path/to/public.key",
+//            "encryptedFiles": [
+//                {
+//                    "file": "secret.dat",
+//                    "encryptedWith": "DEK",
+//                    "algorithm": "OCB"
+//                }
+//            ]
+//        }
+//    }
+// ----
+
+// . Create the immutability configuration file (`immutability.json`):
+// [source,json]
+// ----
+//    {
+//        "immutability": {
+//            "readOnly": true
+//        }
+//    }
+// ----
+
+// . Create the modification configuration file (`modification.json`):
+// [source,json]
+// ----
+//    {
+//        "modification": {
+//            "restApi": {
+//                "updateEndpoint": "/api/update",
+//                "method": "POST",
+//                "requestSchema": {
+//                    "type": "object",
+//                    "properties": {
+//                        "data": {
+//                            "type": "string"
+//                        }
+//                    },
+//                    "required": ["data"]
+//                },
+//                "responseSchema": {
+//                    "type": "object",
+//                    "properties": {
+//                        "status": {
+//                            "type": "string"
+//                        },
+//                        "message": {
+//                            "type": "string"
+//                        }
+//                    }
+//                }
+//            },
+//            "saveNewPackage": {
+//                "enabled": true,
+//                "outputDirectory": "path/to/output"
+//            },
+//            "compositePackage": {
+//                "enabled": true,
+//                "basePackage": "base-package.capsium",
+//                "changesDirectory": "path/to/changes"
+//            }
+//        }
+//    }
+// ----
+
+// 10. **Create the authentication configuration file (`authentication.json`)**:
+// [source,json]
+// ----
+//     {
+//         "authentication": {
+//             "basicAuth": {
+//                 "enabled": true,
+//                 "passwdFile": "path/to/.htpasswd"
+//             },
+//             "oauth": {
+//                 "enabled": true,
+//                 "provider": "Google",
+//                 "clientId": "your-client-id",
+//                 "clientSecret": "your-client-secret",
+//                 "redirectUri": "your-redirect-uri"
+//             }
+//         }
+//     }
+//  ----
+
+// 11. **Create the logging and monitoring configuration file (`logging-monitoring.json`)**:
+// [source,json]
+// ----
+//     {
+//         "logging": {
+//             "enabled": true,
+//             "logFile": "path/to/logfile.log",
+//             "logLevel": "INFO"
+//         },
+//         "monitoring": {
+//             "enabled": true,
+//             "metrics
+// [source,json]
+// ----
+//         "metricsFile": "path/to/metrics.json"
+//     }
+// }
+// ----
+
+// 12. **Create the validation configuration file (`validation.json`)**:
+// [source,json]
+// ----
+//     {
+//         "validation": {
+//             "qualityChecks": {
+//                 "htmlValidation": true,
+//                 "cssValidation": true,
+//                 "jsLinting": true
+//             },
+//             "correctnessChecks": {
+//                 "schemaValidation": true,
+//                 "dependencyValidation": true
+//             }
+//         }
+//     }
+//  ----
+
+// == Usage
+
+// To use the Capsium package, follow the steps below:
+
+// . Package Initialization: Ensure all necessary files are in place and initialize the Capsium package using your preferred method or tool.
+
+// . Start Server: If your package includes a server or API, start the server to serve the content. For example, using Node.js, you might have a script like:
+// [source,js]
+// ----
+//     const express = require('express');
+//     const app = express();
+
+//     // Serve static files
+//     app.use(express.static('path/to/static/files'));
+
+//     // API routes
+//     app.get('/api/data', (req, res) => {
+//         res.json({ message: 'Hello, world!' });
+//     });
+
+//     app.post('/api/update', (req, res) => {
+//         // Handle update
+//         res.json({ status: 'success', message: 'Data updated' });
+//     });
+
+//     const PORT = process.env.PORT || 3000;
+//     app.listen(PORT, () => {
+//         console.log(`Server is running on port ${PORT}`);
+//     });
+//  ----
+
+// . Accessing the Package: Open your browser and navigate to the server's address (e.g., `http://localhost:3000`) to access the Capsium package content.
+
+// . Performing API Operations: Use tools like Postman or curl to interact with the defined API endpoints. For example:
+// [source,sh]
+// ----
+//     curl -X GET http://localhost:3000/api/data
+//     curl -X POST http://localhost:3000/api/update -H "Content-Type: application/json" -d '{"data":"new value"}'
+//  ----
+
+// . Updating and Versioning: To update the package, modify the necessary files and configurations. If changes need to be saved to a new or composite package, follow the procedures defined in the modification configuration.
+
+// == Conclusion
+
+// The Capsium package structure provides a comprehensive way to bundle, secure, and deploy content with robust features like API integration, storage management, security protocols, and more. By following the guidelines and examples in this document, you can create and manage Capsium packages effectively to suit your application's needs.

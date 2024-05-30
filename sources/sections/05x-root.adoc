@@ -1,0 +1,90 @@
+=== Root file
+
+
+The root file of a Capsium package serves as the main entry point and must be an HTML file. This file is crucial as it defines the primary structure and content that the system should load or render.
+
+==== Requirements for Root File
+
+. File Type:
+** The root file must be an HTML file. It should have an `.html` extension.
+
+. File Location:
+** The root file should be located within the package directory.
+** The path to the root file should be specified relative to the root directory of the package.
+
+. File Naming:
+** The root file should have a clear and descriptive name, commonly named `index.html` or `main.html`.
+
+. Entry Point Specification:
+** The path to the root HTML file should be accurately specified in the `index` key of the `routes.json` file.
+** Ensure the path does not contain typos or incorrect directory names.
+
+. Content Requirements:
+** The HTML file should include the necessary structure (`<html>`, `<head>`, and `<body>` tags).
+** It must be well-formed and valid HTML to ensure proper rendering and functionality.
+
+==== Examples of Root File
+
+. Basic HTML Entry Point:
+[source,json]
+----
+   {
+       "index": "public/index.html"
+   }
+----
+** This specifies that the root file for the package is `index.html` located in the `public` directory.
+
+. HTML Entry Point in Documentation Directory:
+[source,json]
+----
+   {
+       "index": "docs/main.html"
+   }
+----
+** This specifies that the root file for the package is `main.html` located in the `docs` directory.
+
+. HTML Entry Point in Web Directory:
+[source,json]
+----
+   {
+       "index": "web/index.html"
+   }
+----
+** This specifies that the root file for the package is `index.html` located in the `web` directory.
+
+. HTML Entry Point in Dist Directory:
+[source,json]
+----
+   {
+       "index": "dist/index.html"
+   }
+----
+** This specifies that the root file for the package is `index.html` located in the `dist` directory.
+
+. HTML Entry Point in Root Directory:
+[source,json]
+----
+   {
+       "index": "index.html"
+   }
+----
+** This specifies that the root file for the package is `index.html` located in the root directory of the package.
+
+
+Example:
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capsium Package</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Welcome to the Capsium Package</h1>
+    <script src="app.js"></script>
+</body>
+</html>
+----

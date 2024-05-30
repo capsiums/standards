@@ -1,0 +1,38 @@
+
+[appendix,obligation="informative"]
+== Example checksum script in python
+
+
+**Example Verification Script** (Python):
+[source,python]
+----
+import hashlib
+import json
+
+def calculate_checksum(file_path, algorithm='SHA-256'):
+    hash_func = hashlib.new(algorithm.lower().replace('-', ''))
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):
+            hash_func.update(chunk)
+    return hash_func.hexdigest()
+
+def verify_package(package_files, checksum_manifest, algorithm='SHA-256'):
+    with open(checksum_manifest, 'r') as f:
+        expected_checksums = json.load(f)
+
+    for file_path in package_files:
+        calculated_checksum = calculate_checksum(file_path, algorithm)
+        if expected_checksums.get(file_path) != calculated_checksum:
+            return False, file_path
+    return True, None
+
+= Example usage
+package_files = ['index.html', 'styles.css']
+checksum_manifest = 'checksums.json'
+is_valid, invalid_file = verify_package(package_files, checksum_manifest)
+
+if is_valid:
+    print("Package integrity verified.")
+else:
+    print(f"Package integrity check failed for file: {invalid_file}")
+----

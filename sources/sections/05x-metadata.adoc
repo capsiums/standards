@@ -1,0 +1,513 @@
+
+=== Metadata file
+
+==== General
+
+[source,json]
+----
+{
+    "name": "example-capsium-package",
+    "version": "1.0.0",
+    "description": "A sample Capsium package that demonstrates resource bundling.",
+ "guid": "example.com/example-capsium-package",
+    "uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "author": "Your Name",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/example-capsium-package.git"
+    },
+    "dependencies": {
+        "other-package.capsium": ">=1.0.0"
+    },
+    "license": "path/to/LICENSE.spdx",
+    "readOnly": true
+}
+----
+
+1. **`name`**
+Description::: The name of the package.
+Requirements:::
+*** Should be a string.
+*** Must be unique within the ecosystem.
+*** Typically uses kebab-case (lowercase letters with hyphens).
+
+2. **`version`**
+Description::: The version of the package.
+Requirements:::
+*** Should follow [Semantic Versioning](https://semver.org/) (e.g., `1.0.0`).
+*** Consists of three digits separated by dots, representing major, minor, and patch versions.
+
+3. **`description`**
+Description::: A brief description of the package.
+Requirements:::
+*** Should be a string.
+*** Provides a concise overview of what the package does.
+
+4. **`guid`**
+Description::: A globally unique identifier for the package.
+Requirements:::
+*** Should be a URI.
+*** URI format
+
+5. **`uuid`**
+Description::: A universally unique identifier for the package.
+Requirements:::
+*** Should be a string.
+*** Must be a valid UUID (e.g., `123e4567-e89b-12d3-a456-426614174000`).
+
+6. **`author`**
+Description::: The name of the author or maintainer of the package.
+Requirements:::
+*** Should be a string.
+*** Can include the author's name or organization.
+
+7. **`license`**
+Description::: The license under which the package is distributed.
+Requirements:::
+*** Should be a string.
+*** Can be a standard license identifier (e.g., `MIT`) or a path to a license file (e.g., `path/to/LICENSE.spdx`).
+
+8. **`repository`**
+Description::: Information about the repository where the package source code is hosted.
+Sub-attributes:::
+`type`:::: The type of version control system (e.g., `git`).
+Requirements::::: Should be a string.
+`url`:::: The URL of the repository.
+Requirements::::: Should be a string and a valid URL.
+
+9. **`dependencies`**
+Description::: A list of other packages that this package depends on.
+Requirements:::
+*** Should be an object where keys are package names and values are version requirements.
+*** Version requirements can use semantic versioning ranges (e.g., `>=1.0.0`).
+
+10. **readOnly**:
+Type::: `boolean`
+Description::: Specifies if the package is immutable.
+Value Requirements::: Must be set to `true` to activate immutability.
+Example:::
+
+NOTE: The `name`, `version`, `guid`, and `uuid` attributes are critical for the unique identification of the package.
+
+NOTE: The `repository` and `dependencies` attributes help in maintaining and managing the package's source code and its dependencies, respectively.
+
+
+==== Identifier
+
+The GUID (Globally Unique Identifier) for a Capsium package is used for uniquely identifying the package within the ecosystem. It follows a URI (Uniform Resource Identifier) format to ensure global uniqueness and to provide a standardized way of referencing the package.
+
+It ensures global uniqueness, readability, and consistent identification of packages.
+
+The GUID is essential for dependency tracking, providing a reliable reference to specific packages within the ecosystem.
+
+
+===== Requirements for GUID in URI Format
+
+. Structure:
+** The GUID should be structured in a URI format.
+** Typically, it follows a reverse domain name notation to ensure uniqueness.
+
+. Components:
+Scheme::: The scheme part of the URI, which could be `http`, `https`, or a custom scheme like `capsium`.
+Authority::: This usually includes the domain name, ensuring the identifier is unique to an organization or individual.
+Path::: A path that typically reflects the package name and possibly the version.
+
+. Uniqueness:
+** The GUID must be unique across all packages to avoid conflicts.
+** Using the domain name owned by the package maintainer helps ensure uniqueness.
+
+. Readability:
+** The GUID should be easy to read and understand, reflecting the package's origin and name.
+
+. Examples:
+** The GUID should ideally be in lowercase to maintain consistency and avoid case-sensitivity issues.
+
+===== Examples of GUIDs in URI Format
+
+Here are a few examples of GUIDs that comply with the URI format requirements:
+
+. Example 1:
+[source,json]
+----
+"guid": "capsium://example.com/package-name"
+----
+Scheme::: `capsium`
+Authority::: `example.com`
+Path::: `/package-name`
+
+. Example 2:
+[source,json]
+----
+"guid": "https://example.com/packages/sample-package"
+----
+Scheme::: `https`
+Authority::: `example.com`
+Path::: `/packages/sample-package`
+
+. Example 3:
+[source,json]
+----
+"guid": "http://myorganization.org/capsium/my-package"
+----
+Scheme::: `http`
+Authority::: `myorganization.org`
+Path::: `/capsium/my-package`
+
+. Example 4:
+[source,json]
+----
+"guid": "capsium://opensource.org/libs/lib-capsium"
+----
+Scheme::: `capsium`
+Authority::: `opensource.org`
+Path::: `/libs/lib-capsium`
+
+===== Dependency tracking
+
+The GUID is crucial for dependency tracking as it provides a unique and consistent identifier for each package. When defining dependencies in the `metadata.json` file, the GUID ensures that the correct package is referenced, avoiding confusion with similarly named packages.
+
+In the `metadata.json` file, dependencies can be listed using the GUID:
+
+[source,json]
+----
+{
+    "dependencies": {
+        "capsium://example.com/package-name": ">=1.0.0",
+        "https://example.com/packages/another-package": "^2.1.0"
+    }
+}
+----
+
+`capsium://example.com/package-name`::: This GUID uniquely identifies the `package-name` from `example.com` and specifies that any version `>=1.0.0` is acceptable.
+`https://example.com/packages/another-package`::: This GUID uniquely identifies the `another-package` from `example.com` and specifies that any version compatible with `2.1.0` (using semantic versioning) is acceptable.
+
+
+
+==== Versions
+
+===== General
+
+Versions in the metadata file use [Semantic Versioning](https://semver.org/), which follows the `MAJOR.MINOR.PATCH` format.
+
+Here is an example:
+
+[source,json]
+----
+{
+    "version": "1.0.0"
+}
+----
+
+
+The version of a Capsium package is a critical attribute that indicates the state and compatibility of the package over time. It follows the Semantic Versioning (SemVer) convention to ensure clarity and consistency across package versions.
+
+===== Requirements for Version
+
+. Format:
+** The version should follow the Semantic Versioning format: `MAJOR.MINOR.PATCH`.
+** Each component (MAJOR, MINOR, PATCH) should be a non-negative integer without leading zeros.
+
+. Components:
+MAJOR::: Incremented for incompatible API changes. When you make changes that break backward compatibility, you increase the major version.
+MINOR::: Incremented for adding functionality in a backward-compatible manner. When you add new features that do not break existing functionality, you increase the minor version.
+PATCH::: Incremented for backward-compatible bug fixes. When you make minor changes or fixes that do not affect the API, you increase the patch version.
+
+3. **Pre-release and Build Metadata** (Optional):
+Pre-release version::: Indicated by appending a hyphen and a series of dot-separated identifiers (e.g., `1.0.0-alpha`, `1.0.0-beta.1`).
+Build metadata::: Indicated by appending a plus sign and a series of dot-separated identifiers (e.g., `1.0.0+20130313144700`, `1.0.0-beta+exp.sha.5114f85`).
+
+. Incrementing Versions:
+** Always increment the appropriate part of the version number based on the nature of the changes.
+** Reset the lower components to zero when incrementing a higher component (e.g., `1.2.3` to `2.0.0`).
+
+. Uniqueness:
+** Each release of a package should have a unique version number to distinguish it from other releases.
+
+===== Examples of Version Numbers
+
+. Stable Versions:
+** `1.0.0`: Initial stable release.
+** `2.1.0`: Minor update with new features that are backward-compatible.
+** `3.0.2`: Patch update with bug fixes for the third major version.
+
+. Pre-release Versions:
+** `1.0.0-alpha`: An alpha version, which is an early release not intended for production use.
+** `1.0.0-beta.1`: The first beta release, which is more stable than alpha but still not production-ready.
+** `1.0.0-rc.1`: The first release candidate, which is a final stage before a stable release.
+
+. Versions with Build Metadata:
+** `1.0.0+20130313144700`: A stable release with build metadata indicating the build timestamp.
+** `2.0.0-beta+exp.sha.5114f85`: A beta release with experimental build metadata.
+
+
+==== Dependencies
+
+===== General
+
+Dependencies are specified in the `dependencies` section of the metadata JSON
+file. Each dependency is listed with a name and a version requirement.
+
+The `dependencies` section in the `metadata.json` file specifies other packages
+that the Capsium package depends on. This section ensures that all necessary
+packages are available for the package to function correctly.
+
+Here is an example:
+
+[source,json]
+----
+{
+    "dependencies": {
+        "other-package.capsium": ">=1.0.0",
+        "another-package.capsium": "^2.3.4"
+    }
+}
+----
+
+
+===== Requirements for Dependencies
+
+. Structure:
+** The `dependencies` section should be an object where each key is the GUID of a dependency package and the corresponding value is the version requirement.
+
+. GUID:
+** The key should be the GUID of the dependency package in URI format, ensuring global uniqueness and proper identification.
+
+. Version Requirement:
+** The value should be a string that specifies the version requirement of the dependency.
+** Version requirements can use semantic versioning ranges, such as:
+*** Exact version: `1.2.3`
+*** Greater than or equal to a version: `>=1.0.0`
+*** Compatible with a version: `^2.1.0`
+*** Ranges: `>=1.0.0 <2.0.0`
+
+. Multiple Dependencies:
+** The `dependencies` section can list multiple dependencies, each with its GUID and version requirement.
+
+===== Examples of Dependencies
+
+. Single Dependency:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.com/package-name": ">=1.0.0"
+   }
+----
+** This specifies that the package depends on `package-name` from `example.com` with any version `>=1.0.0`.
+
+. Multiple Dependencies:
+[source,json]
+----
+   "dependencies": {
+       "https://example.com/packages/first-package": "^2.1.0",
+       "capsium://another.com/second-package": "1.2.3"
+   }
+----
+** This specifies that the package depends on:
+*** `first-package` from `example.com` with any version compatible with `2.1.0`.
+*** `second-package` from `another.com` with the exact version `1.2.3`.
+
+. Range Version Dependency:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.org/dependency-package": ">=1.0.0 <2.0.0"
+   }
+----
+** This specifies that the package depends on `dependency-package` from `example.org` with any version between `1.0.0` (inclusive) and `2.0.0` (exclusive).
+
+. Pre-release Version Dependency:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.net/experimental-package": "1.0.0-beta.1"
+   }
+----
+** This specifies that the package depends on `experimental-package` from `example.net` with the specific pre-release version `1.0.0-beta.1`.
+
+. Dependency with Build Metadata:
+[source,json]
+----
+   "dependencies": {
+       "https://example.com/special-package": "1.0.0+20130313144700"
+   }
+----
+** This specifies that the package depends on `special-package` from `example.com` with the exact version `1.0.0` including build metadata `20130313144700`.
+
+. Multiple Version Ranges:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.org/multi-range-package": ">=1.0.0 <1.5.0 || >=2.0.0 <3.0.0"
+   }
+----
+** This specifies that the package depends on `multi-range-package` from `example.org` with versions either between `1.0.0` (inclusive) and `1.5.0` (exclusive) or between `2.0.0` (inclusive) and `3.0.0` (exclusive).
+
+. Wildcard Version Dependency:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.com/wildcard-package": "*"
+   }
+----
+** This specifies that the package depends on `wildcard-package` from `example.com` with any available version.
+
+. Caret (^) and Tilde (~) Ranges:
+[source,json]
+----
+   "dependencies": {
+       "capsium://example.com/caret-package": "^1.2.3",
+       "capsium://example.com/tilde-package": "~1.2.3"
+   }
+----
+** This specifies that the package depends on:
+*** `caret-package` from `example.com` with any version compatible with `1.2.3` (meaning `>=1.2.3 <2.0.0`).
+*** `tilde-package` from `example.com` with any version compatible with `1.2.3` (meaning `>=1.2.3 <1.3.0`).
+
+Each dependency in the `dependencies` section ensures that the package has access to the required versions of other packages necessary for its proper functionality.
+
+==== License
+
+===== General
+
+The `license` key in the `metadata.json` file specifies the licenses under which the Capsium package is distributed. This key ensures compliance with legal requirements and informs users of their rights and obligations regarding the package.
+
+The license file should be in the SPDX format and referenced from the metadata file.
+
+
+===== Requirements for License
+
+. Format:
+** The `license` key should be a string or an array of objects.
+** Each string should be a valid SPDX (Software Package Data Exchange) license identifier or a path to an SPDX file included in the package.
+
+. Single License:
+** When the package is distributed under a single license, the `license` key should be a string.
+
+. Multiple Licenses:
+** When the package is distributed under multiple licenses, the `license` key should be an array of objects.
+** Each object in the array should specify a `type` and an optional `file` field if pointing to an SPDX file.
+** Each object should also include a `condition` field that describes when the license applies.
+
+. SPDX Identifier or File:
+** An SPDX identifier should be a valid SPDX license identifier.
+** An SPDX file should be a path to a file included in the package that contains the SPDX license text.
+
+===== Examples of License
+
+. Single SPDX License:
+[source,json]
+----
+   "license": "MIT"
+----
+** This specifies that the package is distributed under the MIT License.
+
+. Single SPDX File License:
+[source,json]
+----
+   "license": "LICENSE.spdx"
+----
+** This specifies that the package is distributed under the license detailed in the `LICENSE.spdx` file.
+
+. Multiple Licenses with Conditions:
+[source,json]
+----
+   "license": [
+       {
+           "type": "MIT",
+           "condition": "Default license"
+       },
+       {
+           "type": "Apache-2.0",
+           "condition": "For use in commercial environments"
+       }
+   ]
+----
+** This specifies that the package is distributed under the MIT License by default, but under the Apache License 2.0 when used in commercial environments.
+
+. Combination of SPDX Identifier and File with Conditions:
+[source,json]
+----
+   "license": [
+       {
+           "type": "MIT",
+           "condition": "Default license"
+       },
+       {
+           "type": "Custom-License",
+           "file": "custom-license.spdx",
+           "condition": "For internal use only"
+       }
+   ]
+----
+** This specifies that the package is distributed under the MIT License by default, but under a custom license detailed in the `custom-license.spdx` file for internal use only.
+
+. Complex License Conditions:
+[source,json]
+----
+   "license": [
+       {
+           "type": "GPL-3.0-only",
+           "condition": "When redistributed"
+       },
+       {
+           "type": "LGPL-3.0-only",
+           "condition": "When used as a library"
+       }
+   ]
+----
+** This specifies that the package is distributed under the GPL-3.0-only License when redistributed and under the LGPL-3.0-only License when used as a library.
+
+By following these requirements and examples, the `license` key in the Capsium package's `metadata.json` file provides clear information about the applicable licenses and the conditions under which they apply.
+
+Below is an example of a simple SPDX license file (`LICENSE.spdx`):
+
+----
+SPDXVersion: SPDX-2.1
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: example-capsium-package
+DocumentNamespace: http://spdx.org/spdxdocs/example-capsium-package-abc123
+Creator: Person: John Doe
+Creator: Organization: Example Organization
+Creator: Tool: SPDX-Tools-Version-2.1.0
+Created: 2024-05-28T12:00:00Z
+LicenseID: MIT
+LicenseName: MIT License
+LicenseText: |
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+----
+
+Ensure this SPDX license file is referenced in the `manifest.json`:
+
+[source,json]
+----
+{
+    "license": "path/to/LICENSE.spdx"
+}
+----
+
+
+==== Read-only
+
+Capsium packages can be configured as immutable, ensuring that their content cannot be modified after creation.
+
+This section details the requirements, specifications, and use cases for configuring a package as read-only, including value requirements and enumerations for attributes. The read-only attribute is package-wide and set inside `metadata.json`.
+

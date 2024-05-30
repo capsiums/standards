@@ -1,0 +1,253 @@
+
+== Terms and definitions
+
+=== Capsium package
+
+A structured bundle of multi-format data and resources that can be securely and efficiently interchanged and deployed across different platforms. Capsium packages are designed to be portable and interoperable, ensuring seamless data transfer and application deployment.
+
+=== Capsium reactor
+
+A component responsible for managing and deploying Capsium packages. The Capsium reactor can be implemented directly by a web browser or installed on user machines or servers. It eliminates the need for a traditional web server by mimicking its file-serving capabilities.
+
+=== Capsium HTTP API
+
+=== Non-application website
+
+A website that does not require server-side logic or dynamic content generation. These websites consist primarily of static resources such as HTML, CSS, and JavaScript files and are deployed using the Capsium framework without the need for a traditional web server.
+
+=== Single-page application (SPA)
+
+A web application that loads a single HTML page and dynamically updates the content as the user interacts with the app. SPAs provide a more fluid and responsive user experience by reducing server dependency. Capsium supports the deployment and optimization of SPAs.
+
+=== Data immutability
+
+The property of data that ensures it remains unchanged and secure from tampering after it has been created. Capsium guarantees data immutability through the use of advanced cryptographic techniques, ensuring the integrity and trustworthiness of the data.
+
+=== Interoperability
+
+The ability of different systems, platforms, and applications to communicate and work together effectively. Capsium supports a wide range of formats and protocols, enabling seamless data exchange and integration across diverse environments.
+
+=== Portability
+
+The capability of a system or application to be easily transferred and used across different environments without compromising security or functionality. Capsium packages are designed to be portable, facilitating easy migration and deployment.
+
+=== Compliance and auditing
+
+The adherence to regulatory requirements and the ability to track and monitor data access and modifications. Capsium includes features that ensure compliance with relevant standards and provide robust auditing capabilities to maintain data integrity and security.
+
+=== Encryption
+
+The process of converting data into a coded format to prevent unauthorized access. Capsium employs advanced encryption techniques to ensure that the data within its packages is securely stored and transferred, protecting sensitive information from breaches.
+
+=== Key management
+
+The administration of cryptographic keys, which includes their generation, exchange, storage, use, and replacement. In the context of Capsium, key management is crucial for maintaining the security of encrypted data and ensuring that only authorized entities can access or modify the data.
+
+=== Static website
+
+A website consisting of fixed content that does not change unless manually updated. Static websites are composed of HTML, CSS, and JavaScript files and do not require server-side processing. Capsium aids in the deployment of static websites by packaging all necessary resources into a single, portable bundle.
+
+=== Virtualization
+
+The creation of a virtual version of something, such as an operating system, a server, a storage device, or network resources. Capsium packages reduce the need for virtualization by allowing applications to run directly in the browser or on the client machine, simplifying deployment and reducing resource requirements.
+
+=== Package management
+
+The process of handling software packages, including their installation, upgrade, configuration, and removal. Capsium's package management capabilities ensure that Capsium packages can be efficiently deployed and maintained, streamlining the application lifecycle.
+
+=== Browser-implemented reactor
+
+A Capsium reactor that is directly implemented by the web browser, enabling it to serve Capsium packages without the need for additional server infrastructure. This approach leverages the browser's native capabilities to handle package deployment and management.
+
+=== Serverless architecture
+
+A design pattern where the server management and infrastructure concerns are abstracted away from the developer. Capsium supports serverless architectures by allowing applications to be deployed and run without a traditional server, relying instead on the Capsium reactor.
+
+=== Cryptographic techniques
+
+Methods used to secure information and communications through the use of codes, ensuring that only those for whom the information is intended can read and process it. Capsium utilizes cryptographic techniques to maintain data security and integrity within its packages.
+
+=== Interchange format
+
+A standardized format used for exchanging data between different systems or platforms. Capsium defines a specific interchange format to ensure that its packages can be seamlessly transferred and utilized across various environments.
+
+=== Multi-format information
+
+Data that exists in various formats, such as text, images, video, and structured data. Capsium packages are designed to handle multi-format information, ensuring that diverse types of data can be securely and efficiently bundled together and deployed.
+
+=== Deployment
+
+The process of distributing and installing software or data packages in a specific environment. Capsium streamlines deployment by allowing packages to be easily transferred and installed without the need for extensive configuration or server infrastructure.
+
+=== Regulatory compliance
+
+Adhering to laws, regulations, and guidelines relevant to the handling and protection of data. Capsium helps organizations maintain regulatory compliance by providing tools and features that ensure data security, integrity, and traceability.
+
+=== File-serving capabilities
+
+The ability of a server or system to deliver files to clients upon request. In the context of Capsium, the reactor mimics traditional file-serving capabilities, allowing it to serve packaged resources directly to the browser or client machine.
+
+=== Resource bundling
+
+The process of combining multiple files and resources into a single package. Capsium facilitates resource bundling, enabling efficient transfer and deployment of all necessary components of a web application or website.
+
+=== Package integrity
+
+The assurance that a package has not been altered or tampered with since its creation. Capsium ensures package integrity through cryptographic signatures and other security measures, guaranteeing that the contents of a package remain unchanged during transfer and deployment.
+
+=== Transferability
+
+The ease with which data or applications can be moved from one environment to another. Capsium enhances transferability by providing a standardized package format that can be easily migrated across different platforms and systems.
+
+=== Static content
+
+Web content that does not change and is delivered to the user exactly as stored. Capsium supports the deployment of static content by packaging it into a portable format that can be served without the need for dynamic processing.
+
+=== Advanced cryptography
+
+The use of sophisticated encryption algorithms and techniques to protect data. Capsium employs advanced cryptography to ensure that the data within its packages is secure from unauthorized access and tampering.
+
+=== Data migration
+
+The process of moving data from one system or environment to another. Capsium simplifies data migration by providing a portable package format that facilitates the transfer of data and resources across different platforms.
+
+=== Scalable deployment
+
+The ability to efficiently deploy applications and data across a varying number of environments and users. Capsium supports scalable deployment by providing a flexible package format and reactor that can handle deployments of any size.
+
+=== Platform independence
+
+The ability of software or data to operate on various hardware and operating systems without requiring modification. Capsium ensures platform independence by using standardized formats and protocols, allowing its packages to be used across different environments seamlessly.
+
+=== Dependency management
+
+The process of handling and resolving the dependencies required by software applications or packages. Capsium includes mechanisms for managing dependencies within its packages, ensuring that all necessary components are available and properly configured during deployment.
+
+=== Immutable data
+
+Data that cannot be altered once it has been created. Capsium guarantees immutability through cryptographic methods, making sure that data within a package remains unchanged and secure from tampering.
+
+=== Data integrity
+
+The accuracy and consistency of data over its lifecycle. Capsium ensures data integrity by using cryptographic techniques to protect data from unauthorized alterations, ensuring reliable and trustworthy information.
+
+=== Secure interchange
+
+The safe and protected exchange of data between different systems or platforms. Capsium facilitates secure interchange by using advanced encryption and ensuring that packages are transferred without compromising their integrity or confidentiality.
+
+=== Application lifecycle
+
+The entire process of developing, deploying, maintaining, and eventually decommissioning an application. Capsium supports the application lifecycle by providing tools and features that streamline deployment, maintenance, and updates of packaged applications.
+
+=== Server dependency
+
+The reliance on a server to provide resources, process requests, and manage data. Capsium reduces server dependency by enabling applications and websites to be deployed and run using the Capsium reactor, which can function without a traditional server.
+
+=== Resource optimization
+
+The process of improving the efficiency and performance of resources used by an application or system. Capsium supports resource optimization by packaging resources in a way that reduces load times and minimizes server demands.
+
+=== Data traceability
+
+The ability to track the history, usage, and location of data over its lifecycle. Capsium includes features that enhance data traceability, ensuring that data access and modifications can be monitored and audited for compliance and security purposes.
+
+=== Data security
+
+The protection of data from unauthorized access, corruption, or theft. Capsium ensures data security through encryption, key management, and other protective measures, maintaining the confidentiality and integrity of packaged data.
+
+=== Audit trail
+
+A record of all actions and changes made to data, providing transparency and accountability. Capsium supports the creation of audit trails, helping organizations monitor data access and modifications for compliance and security.
+
+=== Browser-native deployment
+
+The ability to deploy applications and resources directly within a web browser without requiring additional plugins or software. Capsium supports browser-native deployment, leveraging the browser's capabilities to handle and serve packaged data and applications.
+
+=== Dynamic content
+
+Web content that changes based on user interactions or other conditions. While Capsium primarily targets static and SPA content, it can support dynamic content through appropriate integration with client-side scripting.
+
+=== Lightweight deployment
+
+A deployment method that minimizes resource usage and overhead, making it suitable for environments with limited resources. Capsium supports lightweight deployment by packaging applications and data in an efficient, compact format.
+
+=== Multi-platform support
+
+The ability to operate across various operating systems, devices, and environments. Capsium ensures multi-platform support by adhering to standardized formats and protocols, allowing its packages to function seamlessly across different systems.
+
+
+=== Portable package
+
+A self-contained bundle that includes all necessary resources and data, designed to be easily transferred and deployed across different environments. Capsium packages are inherently portable, facilitating straightforward migration and deployment.
+
+=== Client-side processing
+
+The execution of operations on the user's device rather than on a server. Capsium supports client-side processing by enabling web applications to run directly in the browser, reducing the need for server interactions.
+
+=== Cross-platform compatibility
+
+The ability of software or data to work on various operating systems and devices without requiring modifications. Capsium ensures cross-platform compatibility by using standardized formats and protocols, making its packages usable across different platforms.
+
+=== Version control
+
+A system for managing changes to documents, programs, and other information stored as computer files. Capsium integrates version control mechanisms to help track changes, manage different versions, and ensure consistency of packaged data.
+
+=== Secure deployment
+
+The practice of deploying applications and data in a manner that ensures their security throughout the process. Capsium supports secure deployment by using encryption and other security measures to protect packages from tampering and unauthorized access.
+
+=== Configuration management
+
+The process of handling changes in software, hardware, documentation, and other components. Capsium includes features for configuration management, ensuring that packages are correctly configured and maintained throughout their lifecycle.
+
+=== Integrity check
+
+A method to verify that data has not been altered or tampered with. Capsium performs integrity checks using cryptographic signatures, ensuring the authenticity and consistency of the data within its packages.
+
+=== Modular framework
+
+A design approach that divides a system into smaller parts, or modules, that can be independently created and then used in different systems. Capsium is a modular framework, allowing components to be added, removed, or updated without affecting the whole system.
+
+=== User authentication
+
+The process of verifying the identity of a user. Capsium supports user authentication to ensure that only authorized individuals can access and interact with the contents of a package.
+
+=== Data encapsulation
+
+The bundling of data with the methods that operate on that data, restricting direct access to some of the object's components. Capsium utilizes data encapsulation to protect the integrity and security of the packaged data.
+
+=== Environment abstraction
+
+The separation of application logic from the underlying hardware and software environment. Capsium provides environment abstraction by allowing packages to operate independently of the specific details of the deployment environment.
+
+=== Resilience
+
+The ability of a system or application to recover quickly from failures and continue to function. Capsium enhances resilience by packaging applications in a way that minimizes dependencies and facilitates recovery and redeployment.
+
+=== Scalability
+
+The capacity to handle increasing amounts of work or to be readily enlarged. Capsium supports scalability by ensuring that its packages can be deployed and managed efficiently, regardless of the scale of the deployment.
+
+=== Trusted execution
+
+The assurance that code and data are executed in a secure environment, protected from unauthorized access and tampering. Capsium supports trusted execution through the use of secure packaging and deployment mechanisms.
+
+=== Content delivery
+
+The process of distributing digital content to users. Capsium optimizes content delivery by bundling resources into efficient packages that can be served directly by the browser or client machine.
+
+=== Content encapsulation
+
+The practice of bundling content with the necessary metadata and resources to ensure it can be used independently of its original environment. Capsium uses content encapsulation to create portable packages that can be deployed and used across different systems.
+
+=== Application sandboxing
+
+The technique of running applications in a restricted environment to limit their access to system resources and data. Capsium can support application sandboxing by enabling packages to run in isolated environments, enhancing security and control.
+
+=== Metadata management
+
+The process of handling metadata, which is data that describes other data. Capsium includes features for metadata management, ensuring that the necessary information about packaged data and resources is available and properly maintained.
+
+=== Data lifecycle management
+
+The process of managing data from its creation to its eventual disposal. Capsium includes features for data lifecycle management, ensuring that data within its packages is properly handled, maintained, and disposed of according to best practices and regulatory requirements.

@@ -1,0 +1,138 @@
+=== Manifest file
+
+==== General
+
+The manifest file describes how to handle multi-format content within the package.
+
+It includes mappings and configurations for handling different types of files and resources.
+
+When the `manifest.json` file does not exist, it should be built automatically
+from the contents of the `contents/` directory.
+
+Specification::
+File name::: `manifest.json`
+Location::: Root directory of the package
+Content::: JSON format, specifying the resources, their versions, and configurations.
+
+Example:
+[source,json]
+----
+{
+    "resources": {
+        "index.html": {
+            "type": "text/html",
+            "version": "1.0.0"
+        },
+        "styles.css": {
+            "type": "text/css",
+            "version": "1.0.0"
+        },
+        "app.js": {
+            "type": "application/javascript",
+            "version": "1.0.0"
+        },
+        "dynamic-content.js": {
+            "type": "application/javascript",
+            "version": "1.0.0"
+        },
+        "mobile.css": {
+            "type": "text/css",
+            "version": "1.0.0"
+        },
+        "desktop.css": {
+            "type": "text/css",
+            "version": "1.0.0"
+        },
+        "images/small.jpg": {
+            "type": "image/jpeg",
+            "version": "1.0.0"
+        },
+        "images/medium.jpg": {
+            "type": "image/jpeg",
+            "version": "1.0.0"
+        },
+        "images/large.jpg": {
+            "type": "image/jpeg",
+            "version": "1.0.0"
+        },
+        "content/en/index.html": {
+            "type": "text/html",
+            "version": "1.0.0"
+        },
+        "content/en/about.html": {
+            "type": "text/html",
+            "version": "1.0.0"
+        },
+        "content/es/index.html": {
+            "type": "text/html",
+            "version": "1.0.0"
+        },
+        "content/es/about.html": {
+            "type": "text/html",
+            "version": "1.0.0"
+        }
+    }
+}
+----
+
+
+==== Content visibility
+
+Content visibility in the Capsium package is managed through the `manifest.json` file, where resources can be designated as either `exported` or `private`. This designation determines whether the resource can be re-used by other packages or is restricted to the current package.
+
+Requirements and Specifications::
+
+. Resource Declaration:
+** Resources must be declared in the `manifest.json` file.
+** Each resource entry should include the path to the resource and its visibility status.
+
+. Visibility Options:
+Exported::: Resources marked as `exported` are available for re-use by other packages that depend on the current package.
+Private::: Resources marked as `private` are restricted to the current package and cannot be accessed by other packages.
+
+. Example Configuration:
+** An example `manifest.json` file demonstrating resource visibility:
+[source,json]
+----
+     {
+         "resources": [
+             {
+                 "path": "scripts/main.js",
+                 "visibility": "exported"
+             },
+             {
+                 "path": "styles/theme.css",
+                 "visibility": "private"
+             },
+             {
+                 "path": "images/logo.png",
+                 "visibility": "exported"
+             }
+         ]
+     }
+----
+
+. Usage in Dependent Packages:
+** Packages that depend on another package can access resources marked as `exported` by including the appropriate references in their own configuration files.
+** Example usage in a dependent package:
+[source,json]
+----
+     {
+         "dependencies": {
+             "capsium-core": "1.0.0"
+         },
+         "resources": [
+             {
+                 "path": "node_modules/capsium-core/scripts/main.js",
+                 "visibility": "exported"
+             }
+         ]
+     }
+----
+
+. Enforcement:
+** The Capsium system should enforce visibility rules, ensuring that private resources are not accessible to other packages.
+** Attempts to access private resources from other packages should result in an error, maintaining the integrity of resource boundaries.
+
+By clearly defining and adhering to these visibility rules, the Capsium package ensures that resource bundling is both flexible and secure, allowing for effective re-use of assets while protecting private resources.
+

@@ -1,0 +1,32 @@
+=== Structure
+
+==== General
+
+The structure of a Capsium package includes several key elements that organize
+and define the contents and functionality of the package:
+
+Folder hierarchy:: The internal file/folder hierarchy represents how files will be served by the package's external API.
+Metadata, versions, package dependencies:: Metadata provides information about the package, including versioning details and dependencies on other Capsium packages.
+License and copyright file and declaration:: The package includes a license and copyright file, typically in SPDX format, to specify the legal terms of use.
+
+
+==== Folder hierarchy
+
+The folder hierarchy is:
+
+----
+example-capsium-package/
+├── index.html
+├── styles.css
+├── app.js
+├── manifest.json
+├── routes.json
+├── http-api.json
+├── storage.json
+├── security.json
+├── authentication.json
+├── logging-monitoring.json
+├── validation.json
+├── LICENSE.spdx
+└── README.md
+----

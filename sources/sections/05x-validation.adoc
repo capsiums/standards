@@ -1,0 +1,100 @@
+=== Validation
+
+==== General
+
+Validation ensures the quality and correctness of the Capsium package. This
+section describes the various quality and correctness checks that can be
+performed on a Capsium package, along with their attributes and features.
+
+==== Data validation
+
+Data sets included should be validated against respective schemas to be correct
+otherwise operational deployment of the Capsium package will fail.
+
+// TODO
+
+==== Quality Checks
+
+Quality checks are processes designed to verify the quality of the package's content. These checks ensure that the package adheres to best practices and standards for code quality and content integrity.
+
+HTML Validation:: Ensures that all HTML files in the package are well-formed and comply with HTML standards.
+CSS Validation:: Checks that all CSS files are syntactically correct and conform to CSS specifications.
+JavaScript Linting:: Uses a linter tool to analyze JavaScript code for potential errors and adherence to coding standards.
+
+Example:
+
+[source,json]
+----
+{
+    "validation": {
+        "qualityChecks": {
+            "htmlValidation": true,
+            "cssValidation": true,
+            "jsLinting": true
+        }
+    }
+}
+----
+
+In this example, all three quality checks (`htmlValidation`, `cssValidation`, and `jsLinting`) are enabled, indicating that HTML, CSS, and JavaScript files will be validated.
+
+==== Correctness Checks
+
+Correctness checks ensure that the package meets all specifications and requirements. These checks validate the structural and functional integrity of the package.
+
+Schema Validation:: Ensures that data files within the package conform to predefined schemas. This is critical for maintaining consistency and correctness in data formats.
+Dependency Validation:: Checks that all dependencies required by the package are correctly specified and available. This ensures that the package can be built and run without missing dependencies.
+
+Example:
+
+[source,json]
+----
+{
+    "validation": {
+        "correctnessChecks": {
+            "schemaValidation": true,
+            "dependencyValidation": true
+        }
+    }
+}
+----
+
+In this example, both `schemaValidation` and `dependencyValidation` are enabled, indicating that the package's data files will be validated against their schemas, and all dependencies will be checked for correctness.
+
+==== Combined Example
+
+A comprehensive validation configuration that includes both quality and correctness checks might look like this:
+
+[source,json]
+----
+{
+    "validation": {
+        "qualityChecks": {
+            "htmlValidation": true,
+            "cssValidation": true,
+            "jsLinting": true
+        },
+        "correctnessChecks": {
+            "schemaValidation": true,
+            "dependencyValidation": true
+        }
+    }
+}
+----
+
+In this expanded example, the validation object contains both quality checks and correctness checks, providing a holistic validation approach to ensure the package is both high-quality and correct.
+
+==== Attributes Summary
+
+validation:: The root object for validation configuration.
+
+qualityChecks::: Object containing quality check configurations.
+htmlValidation:::: (`boolean`): Enable or disable HTML validation.
+cssValidation:::: (`boolean`): Enable or disable CSS validation.
+jsLinting:::: (`boolean`): Enable or disable JavaScript linting.
+
+correctnessChecks::: Object containing correctness check configurations.
+schemaValidation:::: (`boolean`): Enable or disable schema validation.
+dependencyValidation:::: (`boolean`): Enable or disable dependency validation.
+
+By configuring these attributes, Capsium packages can be thoroughly validated to ensure they meet both quality and correctness standards. This structured approach helps maintain high standards and reliability for Capsium packages.

@@ -1,0 +1,17 @@
+[abstract]
+== Abstract
+Capsium is a modular framework designed to efficiently and securely interchange
+multi-format information in interoperable portable packages, as well as
+platform-independent deployment of these packages to serve information
+consumers.
+
+This document specifies requirements of the Capsium framework and its
+components:
+
+* Capsium packages: standardized unit of information interchange in the Capsium
+framework.
+
+* Capsium reactors: server-side or user-side software that allows deployment of
+a Capsium package.
+
+* Capsium HTTP API: user-facing HTTP API implemented by a Capsium reactor.

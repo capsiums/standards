@@ -1,0 +1,237 @@
+=== Packaging options
+
+==== General
+
+Encapsulation in the context of Capsium packages involves ensuring data
+integrity, security, and efficiency through compression, digital signatures, and
+encryption. These operations are configured and managed through a
+`packaging.json` file.
+
+The `packaging.json` file serves as a centralized configuration for managing the
+compression, digital signature, and encryption aspects of the Capsium package
+encapsulation process. It ensures that all necessary parameters and standards
+are clearly defined and easily accessible for implementation.
+
+Compression is always applied. Signing occurs on the entire package, and will be
+stored in a file called signature.sig inside the package. Encryption happens
+before signing. The file metadata.json and signature.json itself are
+unencrypted.
+
+When an encrypted and signed Capsium package is uncompressed, it looks like this:
+
+- package/metadata.json
+- package/signature.json
+- package/package.enc
+
+The digital signature is calculated on the combined data of:
+
+- package/metadata.json
+- package/signature.json (where the "signature" key is set to an empty string)
+- package/package.enc
+
+When package.enc is decrypted, the package looks like this, depending on what the package contains:
+
+- package/metadata.json
+- package/signature.json
+- package/routes.json
+- package/manifest.json
+- package/storage.json
+- package/contents/index.html
+- package/data/my_yaml.yaml
+
+
+
+[source,json]
+----
+{
+  "compression": {
+    "algorithm": "zip",
+    "level": "best",
+    "fileExtension": ".zip"
+  },
+  "digitalSignature": {
+    "algorithm": "RSA-SHA256",
+    "keyLength": 2048,
+    "certificateType": "X.509",
+    "signatureFile": "signature.sig"
+  },
+  "encryption": {
+    "algorithm": "AES-256",
+    "mode": "GCM",
+    "keyManagement": "secure",
+    "fileExtension": ".enc"
+  }
+}
+----
+
+==== Compression
+
+Compression reduces the size of the package, allowing for more efficient storage and transmission. The Zip algorithm, as defined by the ISO document compression standard, is used.
+
+===== Requirements and Specifications
+
+Algorithm::: Zip
+ISO Standard Compliance::: The compression must adhere to the ISO/IEC 21320-1:2015 standard for document compression.
+Compression Level::: Configurable levels of compression (e.g., no compression, fastest, best compression).
+File Extensions::: Compressed files should use the `.zip` extension.
+
+===== Configuration Details in `packaging.json`
+
+[source,json]
+----
+{
+  "compression": {
+    "algorithm": "Zip",
+    "standard": "ISO/IEC 21320-1:2015",
+    "level": "best",
+    "fileExtension": ".zip"
+  }
+}
+----
+
+==== Digital Signature Using X.509 or OpenPGP
+
+Digital signatures ensure the authenticity and integrity of the package, verifying that it has not been tampered with and confirming the identity of the sender. Capsium packages can use either X.509 certificates or OpenPGP keys for digital signatures.
+
+===== Requirements and Specifications
+
+Signature Algorithm::: RSA with SHA-256
+Key Length::: Minimum 2048 bits
+Digital Certificate:::
+X.509:::: Must follow the X.509 standard for public key infrastructure.
+OpenPGP:::: Must follow the OpenPGP standard for encryption and signatures.
+Signature File::: A separate file (e.g., `signature.sig`) containing the digital signature.
+
+===== Configuration Details in `packaging.json`
+
+[source,json]
+----
+{
+  "digitalSignature": {
+    "algorithm": "RSA-SHA256",
+    "keyLength": 2048,
+    "certificateType": "X.509",
+    "signatureFile": "signature.sig"
+  }
+}
+----
+
+For OpenPGP:
+
+[source,json]
+----
+{
+  "digitalSignature": {
+    "algorithm": "RSA-SHA256",
+    "keyLength": 2048,
+    "certificateType": "OpenPGP",
+    "signatureFile": "signature.sig"
+  }
+}
+----
+
+
+==== Encryption
+
+Encryption protects the package's contents from unauthorized access, ensuring that only intended recipients can decrypt and access the data.
+
+===== Requirements and Specifications
+
+Encryption Algorithm::: AES-256
+Mode of Operation::: GCM (Galois/Counter Mode) for authenticated encryption
+Key Management::: Secure distribution and storage of encryption keys
+Encrypted File::: The encrypted package should have a `.enc` extension.
+
+===== Configuration Details in `packaging.json`
+
+[source,json]
+----
+{
+  "encryption": {
+    "algorithm": "AES-256",
+    "mode": "GCM",
+    "keyManagement": "secure",
+    "fileExtension": ".enc"
+  }
+}
+----
+
+
+==== Optimization
+
+Optimization ensures that the Capsium package is delivered efficiently and performs optimally in various environments. This section describes the methods and attributes involved in optimizing content delivery for Capsium packages.
+
+===== Content Delivery Optimization
+
+Content Delivery Optimization focuses on improving the speed and efficiency with which package content is delivered to end-users. This includes techniques for minimizing load times, reducing bandwidth usage, and enhancing overall user experience.
+
+Minification:: The process of removing unnecessary characters from code (such as whitespace, comments, and redundant formatting) to reduce file size without affecting functionality. This is commonly applied to HTML, CSS, and JavaScript files.
+Compression:: The use of algorithms to reduce the size of files for transmission over the network. Common methods include gzip and Brotli compression.
+Caching:: Storing copies of files in strategic locations (such as on a user's device or at various points in a content delivery network) to reduce load times and server requests.
+Image Optimization:: Techniques for reducing the file size of images without significantly compromising quality. This can include methods like resizing, format conversion, and compression.
+Lazy Loading:: A strategy for loading images and other resources only when they are needed, rather than all at once. This can significantly improve initial load times and overall performance.
+
+Example:
+
+[source,json]
+----
+{
+    "optimization": {
+        "minification": {
+            "html": true,
+            "css": true,
+            "js": true
+        },
+        "compression": {
+            "enabled": true,
+            "method": "gzip"
+        },
+        "caching": {
+            "enabled": true,
+            "strategy": "aggressive"
+        },
+        "imageOptimization": {
+            "enabled": true,
+            "methods": ["resize", "compress"]
+        },
+        "lazyLoading": {
+            "enabled": true,
+            "elements": ["images", "videos"]
+        }
+    }
+}
+----
+
+In this example, various optimization techniques are enabled and configured:
+
+Minification:: HTML, CSS, and JavaScript files will be minified.
+Compression:: Gzip compression is enabled for reducing file sizes during transmission.
+Caching:: An aggressive caching strategy is employed to store and serve content efficiently.
+Image Optimization:: Images will be resized and compressed to reduce their file sizes.
+Lazy Loading:: Images and videos will be loaded only when they come into view, reducing initial load times.
+
+===== Attributes Summary
+
+optimization:: The root object for optimization configuration.
+
+minification::: Object containing minification settings.
+html:::: (`boolean`): Enable or disable HTML minification.
+css:::: (`boolean`): Enable or disable CSS minification.
+js:::: (`boolean`): Enable or disable JavaScript minification.
+
+compression::: Object containing compression settings.
+enabled:::: (`boolean`): Enable or disable compression.
+method:::: (`string`): Specifies the compression method (e.g., `gzip`, `brotli`).
+caching::: Object containing caching settings.
+enabled:::: (`boolean`): Enable or disable caching.
+strategy:::: (`string`): Specifies the caching strategy (e.g., `aggressive`, `conservative`).
+
+imageOptimization::: Object containing image optimization settings.
+enabled:::: (`boolean`): Enable or disable image optimization.
+methods:::: (`array` of `string`): Specifies the methods used for image optimization (e.g., `resize`, `compress`).
+
+lazyLoading::: Object containing lazy loading settings.
+enabled:::: (`boolean`): Enable or disable lazy loading.
+elements:::: (`array` of `string`): Specifies the elements to apply lazy loading to (e.g., `images`, `videos`).
+
+By implementing these optimization techniques, Capsium packages can deliver content more efficiently, providing a faster and smoother user experience. This structured approach ensures that content is not only high-quality and correct but also optimized for performance and delivery.

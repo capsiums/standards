@@ -1,0 +1,53 @@
+
+
+
+== Capsium framework
+
+The Capsium framework provides a comprehensive set of principles, features, and use cases that define its architecture and functionality. This clause outlines the essential components and concepts that make up the framework, ensuring a clear understanding of its capabilities and applications.
+
+=== General
+
+Capsium (Common architecture for portable secure information interchange and unified management) is an innovative technology framework designed to facilitate the interoperable and portable deployment of lightweight, web-compatible, interactive data packages. The framework supports the packaging and deployment of static websites, which can be hosted by any cloud file hosting service with minimal web serving functionality, such as AWS S3 or GitHub Pages.
+
+The core concept of Capsium is to enable the packaging of static websites into deployable objects, called Capsium packages. These packages are self-contained, size-efficient, and secure, providing all necessary resources and metadata to be served by a simple web server.
+
+=== Principles of the framework
+
+The Capsium framework is based on several key principles that ensure its effectiveness and reliability:
+
+Ease of use:: The deployable object can be easily built, inspected, extracted, and deployed.
+Cross-platform deployment:: The deployable object can be deployed across multiple platforms without modification.
+Static nature:: The deployable object is static, meaning it does not require server-side processing to function.
+Size efficiency:: The deployable object is designed to be as small and efficient as possible.
+Integrity:: The deployable object cannot be corrupted, ensuring data integrity.
+Self-containment:: The deployable object is self-contained, including all necessary routes and redirects for the static site.
+Versioning:: The deployable object can be versioned, allowing for efficient updates and rollbacks.
+Dependencies:: The deployable object can require other deployable objects, enabling modularity and extensibility.
+File system support:: The deployable object has a file system that supports all types of files and provides immutable, layered versioning.
+Deployment API compatibility:: The deployment API can be easily implemented by common web servers such as Apache and nginx.
+Compliance:: The deployment API complies with common expectations and supports fetching of metadata and other introspection features.
+
+=== Key features of the framework
+
+The Capsium framework includes several key features that enhance its functionality and usability:
+
+Capsium package:: A deployable object that is a compressed, single-file package containing all files necessary for a static site.
+Capsium filesystem:: A file system within the Capsium package, representing the file/folder hierarchy as it will be served by the package's external API.
+Capsium reactor:: A Capsium-enabled web server that activates and deploys the Capsium package.
+Activation:: The process by which a reactor loads the content of a Capsium package and serves its routes to a web address.
+
+These features enable the efficient creation, deployment, and management of web-compatible, interactive data packages.
+
+=== Use cases of the framework
+
+The Capsium framework supports a variety of use cases, demonstrating its versatility and practicality:
+
+Static website deployment:: Capsium packages can be used to deploy static websites, including HTML, CSS, JS, and media files, on cloud file hosting services.
+Microservices integration:: Capsium packages can mount routes from other deployable objects, facilitating the integration of microservices.
+Data migration:: Capsium packages can be used to securely and efficiently migrate data across different platforms and environments.
+Secure interchange:: Capsium packages provide a secure method for exchanging data between systems, with support for encryption and digital signatures.
+Version control and updates:: Capsium packages support versioning, enabling efficient updates and rollbacks of deployed static websites.
+
+These use cases highlight the practical applications of the Capsium framework in various scenarios, emphasizing its ability to enhance the deployment and management of web-compatible data packages.
+
+

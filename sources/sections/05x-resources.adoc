@@ -1,0 +1,173 @@
+
+=== Resource bundling
+
+==== General
+
+Resource bundling involves packaging all necessary static and dynamic content within the Capsium package to ensure that the package is self-contained and can be served efficiently.
+
+The content include:
+
+Static content:: Includes HTML, CSS, JS, images, and other media files.
+Dynamic content:: Although primarily static, the package can include references to dynamic content handled by client-side scripts.
+Conditional alternative content:: The package can include alternative content that is conditionally loaded based on specific criteria, such as files with alternative image resolutions.
+
+
+Example directory structure:
+----
+example-capsium-package/
+├── index.html
+├── styles.css
+├── app.js
+├── dynamic-content.js
+├── mobile.css
+├── desktop.css
+├── images/
+│   ├── small.jpg
+│   ├── medium.jpg
+│   └── large.jpg
+├── content/
+│   ├── en/
+│   │   ├── index.html
+│   │   └── about.html
+│   ├── es/
+│   │   ├── index.html
+│   │   └── about.html
+├── metadata.json
+├── manifest.json
+├── routes.json
+├── LICENSE.spdx
+└── README.md
+----
+
+
+==== Static Content
+
+Static content includes files that do not change once the package is created and can be directly served to the client. These files are essential for the visual and functional aspects of the web application.
+
+HTML Files:: These files define the structure and layout of web pages. They typically include elements like headers, paragraphs, links, and embedded resources such as images and scripts.
+
+  Example:
+[source,html]
+----
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <title>Example Page</title>
+      <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+      <h1>Welcome to Example Page</h1>
+      <script src="app.js"></script>
+  </body>
+  </html>
+----
+
+CSS Files:: These files define the styles for HTML elements, specifying colors, fonts, layouts, and other visual aspects.
+
+  Example (`styles.css`):
+[source,css]
+----
+  body {
+      font-family: Arial, sans-serif;
+      background-color: =f0f0f0;
+  }
+  h1 {
+      color: =333;
+  }
+----
+
+JavaScript Files:: These files contain client-side scripts that add interactivity and dynamic behavior to the web pages.
+
+  Example (`app.js`):
+[source,javascript]
+----
+  document.addEventListener('DOMContentLoaded', () => {
+      console.log('Page loaded');
+  });
+----
+
+Images and Media Files:: These include JPEG, PNG, GIF images, SVG graphics, and other media files like videos and audio clips that are used within the web pages.
+
+  Example:
+----
+  example-capsium-package/
+  ├── images/
+  │   ├── logo.png
+  │   └── banner.jpg
+----
+
+==== Dynamic Content
+
+Dynamic content refers to content that can change or be generated on the fly, typically handled by client-side scripts. While the package itself is primarily static, it can include references to dynamic content.
+
+Client-side Scripts:: JavaScript files that fetch and display dynamic content from APIs or other sources at runtime.
+
+  Example (`dynamic-content.js`):
+[source,javascript]
+----
+  fetch('https://api.example.com/data')
+      .then(response => response.json())
+      .then(data => {
+          document.getElementById('dynamic-content').innerText = data.message;
+      });
+----
+
+Dynamic References:: Links and scripts that point to external resources or APIs that provide dynamic data.
+
+  Example (`index.html`):
+[source,html]
+----
+  <div id="dynamic-content"></div>
+  <script src="dynamic-content.js"></script>
+----
+
+==== Conditional Alternative Content
+
+Conditional alternative content allows the package to include multiple versions of a resource, with the appropriate version being loaded based on specific criteria. This can enhance performance and provide a better user experience.
+
+Alternative Image Resolutions:: Including images in multiple resolutions and loading the appropriate one based on the device's screen resolution.
+
+  Example (`index.html`):
+[source,html]
+----
+  <img srcset="small.jpg 480w, medium.jpg 768w, large.jpg 1024w"
+       sizes="(max-width: 600px) 480px, (max-width: 900px) 768px, 1024px"
+       src="small.jpg" alt="Example Image">
+----
+
+Content for Different Languages:: Providing content in multiple languages and loading the appropriate version based on the user's language preferences.
+
+  Example:
+----
+  example-capsium-package/
+  ├── content/
+  │   ├── en/
+  │   │   ├── index.html
+  │   │   └── about.html
+  │   ├── es/
+  │   │   ├── index.html
+  │   │   └── about.html
+----
+
+  JavaScript to load language-specific content (`language-loader.js`):
+[source,javascript]
+----
+  const userLang = navigator.language || navigator.userLanguage;
+  const contentPath = userLang.startsWith('es') ? 'content/es/' : 'content/en/';
+  fetch(contentPath + 'index.html')
+      .then(response => response.text())
+      .then(html => {
+          document.body.innerHTML = html;
+      });
+----
+
+Device-Specific Content:: Serving different versions of content based on the type of device (e.g., mobile vs. desktop).
+
+  Example:
+[source,html]
+----
+<link rel="stylesheet" media="screen and (max-width: 600px)" href="mobile.css">
+<link rel="stylesheet" media="screen and (min-width: 601px)" href="desktop.css">
+----
+

@@ -1,0 +1,628 @@
+
+
+=== Storage
+
+// This specification outlines the structure and requirements for managing storage, data access, and data persistence in Capsium packages. By following these guidelines, developers can ensure that their packages are robust, maintainable, and compatible with the Capsium ecosystem.
+
+The Capsium package includes a comprehensive storage system that supports layered storage with a unified merged filesystem view, static data files, and databases. This section outlines the requirements and specifications for each storage type.
+
+A Capsium package can contain datasets. Each dataset is composed of data items. A dataset can be one of:
+
+Layered storage:: Utilizes a unified merged filesystem view, similar to overlay FS, to manage different layers of content.
+Static File with Structured Data:: Formats such as CSV, JSON, YAML.
+Backed by Schemas:: Formats that use JSON Schema or YAML Schema for validation.
+Static data files:: Contains immutable data files that are part of the package.
+Databases:: Includes support for embedded databases such as SQLite to store structured data (if supported by the Capsium reactor).
+
+==== Defining datasets
+
+Datasets are explicitly defined, and are referred by other components,
+such as <<dataset-routes>>.
+
+source:: Defines the source of the data, such as a file path, database query, or external API.
+
+Example:
+
+[source,json]
+----
+{
+    "storage": {
+        "dataSets": {
+            "users": {
+                "source": "db/users",
+            },
+            "products": {
+                "source": "files/products.json",
+            },
+            "sales": {
+                "source": "api/external/sales",
+            }
+        }
+    }
+}
+----
+
+
+==== Layered storage
+
+Layered storage in the Capsium package allows for multiple storage layers to be combined into a single, unified filesystem view, similar to the functionality of "overlay FS." This approach ensures that changes can be made in a non-destructive manner while preserving the original data.
+
+Requirements and Specifications::
+
+. Layer Structure:
+** The storage system must support multiple layers, where each layer can be read-only or writable.
+** Layers should be stacked in a specified order, with the topmost layer being the most recent.
+
+. Unified View:
+** The system must present a single filesystem view that merges all layers.
+** File access should respect the layer order, with the topmost layer taking precedence in case of conflicts.
+
+. Non-destructive Changes:
+** Changes should be written to the topmost writable layer, preserving lower layers intact.
+** Deletions in higher layers should not physically remove the files from lower layers but should mark them as deleted in the unified view.
+
+. Configuration:
+** The configuration for layered storage should be specified in a `manifest.json` file.
+** Example:
+[source,json]
+----
+     {
+         "layers": [
+             {
+                 "path": "base",
+                 "writable": false,
+                 "visibility": "exported"
+             },
+             {
+                 "path": "updates",
+                 "writable": true,
+                 "visibility": "private"
+             }
+         ]
+     }
+----
+** The `visibility` field determines if the layer is exposed as an inheritable interface (`exported`) or kept private (`private`).
+
+
+==== Static data files
+
+Static data files are immutable files that are served directly by the Capsium package. These files typically include assets such as images, stylesheets, and JavaScript files.
+
+Requirements and Specifications::
+
+. Storage Location:
+** Static data files must be stored in a designated directory, such as `static` or `public`.
+
+. Access Path:
+** Static files should be accessible via predictable URL paths, typically mirroring their directory structure.
+** Example: `/static/images/logo.png` should map to `static/images/logo.png` in the filesystem.
+
+. Caching:
+** Static files should be served with appropriate caching headers to improve performance.
+** Example:
+[source,http]
+----
+     Cache-Control: public, max-age=31536000
+----
+
+. Configuration:
+** The location of static files should be defined in the `routes.json` file.
+** Example:
+[source,json]
+----
+     {
+         "static": {
+             "path": "static",
+             "url": "/static"
+         }
+     }
+----
+
+==== Datasets
+
+Datasets in the Capsium package provide structured storage for dynamic data that requires querying and transactional operations.
+
+JSON schema or YAML schema for datasets using static files like JSON or YAML in the `storage.json` configuration file.
+
+===== Schema-backed file datasets
+
+When working with datasets in static file formats such as JSON or YAML, it's
+important to validate the data against a predefined schema. This ensures the
+data adheres to the expected structure and types. The `storage.json`
+configuration file can include references to these schemas.
+
+
+The `storage.json` file should be structured to include the following attributes for each dataset:
+
+datasetId::: Identifier for the dataset.
+dataFile::: Path to the static data file (JSON or YAML).
+schemaFile::: Path to the schema file (JSON Schema or YAML Schema).
+schemaType::: Type of the schema (e.g., "json-schema" or "yaml-schema").
+
+Example structure:
+```json
+{
+  "datasets": [
+    {
+      "datasetId": "dataset1",
+      "dataFile": "/path/to/datafile.json",
+      "schemaFile": "/path/to/schemafile.json",
+      "schemaType": "json-schema"
+    },
+    {
+      "datasetId": "dataset2",
+      "dataFile": "/path/to/datafile.yaml",
+      "schemaFile": "/path/to/schemafile.yaml",
+      "schemaType": "yaml-schema"
+    }
+  ]
+}
+```
+
+Here's an example of a JSON schema for validating a dataset of user information:
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "users": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        },
+        "required": ["id", "name", "email"]
+      }
+    }
+  },
+  "required": ["users"]
+}
+```
+
+Here's an example of a YAML schema for validating a dataset of user information:
+```yaml
+%YAML 1.2
+---
+$schema: "http://json-schema.org/draft-07/schema#"
+type: "object"
+properties:
+  users:
+    type: "array"
+    items:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        name:
+          type: "string"
+        email:
+          type: "string"
+          format: "email"
+      required:
+        - id
+        - name
+        - email
+required:
+  - users
+```
+
+===== SQLite database
+
+In addition to static file formats like JSON and YAML, datasets can also be stored in SQLite databases. This section explains how to configure SQLite datasets in the `storage.json` file.
+
+
+The `storage.json` file should include the following attributes for each SQLite dataset:
+
+datasetId::: Identifier for the dataset.
+databaseFile::: Path to the SQLite database file.
+schemaFile::: Path to the schema file (SQL schema or JSON schema for defining table structures).
+schemaType::: Type of the schema (e.g., "sql-schema" or "json-schema").
+table::: Name of the table in the SQLite database that the dataset corresponds to.
+
+Example structure:
+```json
+{
+  "datasets": [
+    {
+      "datasetId": "dataset1",
+      "databaseFile": "/path/to/database.sqlite",
+      "schemaFile": "/path/to/schemafile.sql",
+      "schemaType": "sql-schema",
+      "table": "users"
+    },
+    {
+      "datasetId": "dataset2",
+      "databaseFile": "/path/to/another_database.sqlite",
+      "schemaFile": "/path/to/schemafile.json",
+      "schemaType": "json-schema",
+      "table": "products"
+    }
+  ]
+}
+```
+
+
+Here's an example of an SQL schema for a table of user information:
+```sql
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE
+);
+```
+
+
+Here's an example of a JSON schema for validating the structure of a table of user information:
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "email": { "type": "string", "format": "email" }
+  },
+  "required": ["id", "name", "email"]
+}
+```
+
+
+===== Validation
+
+To validate the datasets in a YAML, JSON dataset or a SQLite database against
+their respective schemas, you can use various tools and libraries depending on
+the programming language.
+
+
+
+
+
+==== REST API for data access and modification
+
+This is the HTTP REST API that the Capsium reactor offers for an activated Capsium package to the HTTP user. The following endpoints are supported for all datasets, as defined in `storage.json`.
+
+===== GET (Fetch Data)
+
+Endpoint::: `/dataset/{datasetId}/data`
+Method::: GET
+Description::: Fetches all data items from the specified dataset.
+
+Request Attributes::
+datasetId::: The identifier of the dataset. Must be a string.
+
+Response::
+status::: 200 OK on success.
+body::: An array of data items.
+
+Example:
+```json
+{
+  "datasetId": "dataset1"
+}
+```
+
+===== GET (Fetch Single Data Item)
+
+Endpoint::: `/dataset/{datasetId}/data/{dataId}`
+Method::: GET
+Description::: Fetches a single data item from the specified dataset.
+
+Request Attributes::
+datasetId::: The identifier of the dataset. Must be a string.
+dataId::: The identifier of the data item to be fetched. Must be a string.
+
+Response::
+status::: 200 OK on success.
+body::: The requested data item.
+
+Example:
+```json
+{
+  "datasetId": "dataset1",
+  "dataId": "dataItem42"
+}
+```
+
+===== POST (Create Data Item)
+
+Endpoint::: `/dataset/{datasetId}/data`
+Method::: POST
+Description::: Adds a new data item to the specified dataset.
+
+Request Attributes::
+datasetId::: The identifier of the dataset. Must be a string.
+data::: The data item to be added. Must conform to the dataset's schema.
+
+Response::
+status::: 201 Created on success.
+body::: The created data item with its new identifier.
+
+Example:
+```json
+{
+  "datasetId": "dataset1",
+  "data": {
+    "key1": "value1",
+    "key2": 123
+  }
+}
+```
+
+===== PUT (Update Data Item)
+
+Endpoint::: `/dataset/{datasetId}/data/{dataId}`
+Method::: PUT
+Description::: Updates an existing data item in the specified dataset.
+
+Request Attributes::
+datasetId::: The identifier of the dataset. Must be a string.
+dataId::: The identifier of the data item to be updated. Must be a string.
+data::: The updated data item. Must conform to the dataset's schema.
+
+Response::
+status::: 200 OK on success.
+body::: The updated data item.
+
+Example:
+```json
+{
+  "datasetId": "dataset1",
+  "dataId": "dataItem42",
+  "data": {
+    "key1": "newValue",
+    "key2": 456
+  }
+}
+```
+
+===== DELETE (Delete Data Item)
+
+Endpoint::: `/dataset/{datasetId}/data/{dataId}`
+Method::: DELETE
+Description::: Deletes a data item from the specified dataset.
+
+Request Attributes::
+datasetId::: The identifier of the dataset. Must be a string.
+dataId::: The identifier of the data item to be deleted. Must be a string.
+
+Response::
+status::: 204 No Content on success.
+
+Example:
+```json
+{
+  "datasetId": "dataset1",
+  "dataId": "dataItem42"
+}
+```
+
+==== Data Persistence
+
+===== General
+
+A Capsium package containing data may allow modification of data inside the
+included datasets. Configuration needs to be specified in the package on which
+data files can be modified or updated.
+
+Since a Capsium package at its core is immutable, the mechanism for handling
+modifications is by storing action patches in an "action history" folder. This
+folder can be external to the Capsium package or inside a composite Capsium
+package. Each data change is stored as a separate patch file.
+
+When a Capsium reactor loads a Capsium package with an action history folder, it will replay those actions on top of the dataset so that the changes persist for users who access the activated Capsium package.
+
+===== Action patch
+
+An action patch represents a single change to a dataset. The following attributes are required:
+
+timestamp::: The time when the change was made. Must be in ISO 8601 format (e.g., `2024-05-28T12:34:56Z`).
+user::: The identifier of the user who made the change. Should be a string.
+action::: The type of action performed. Enumerated values: `add`, `update`, `delete`.
+datasetId::: The identifier of the dataset affected by the action. Should be a string.
+dataId::: The identifier of the data item affected by the action. Should be a string.
+changes::: A JSON object detailing the changes made. The format depends on the type of action.
+
+Example:
+```json
+{
+  "timestamp": "2024-05-28T12:34:56Z",
+  "user": "user123",
+  "action": "update",
+  "datasetId": "dataset1",
+  "dataId": "dataItem42",
+  "changes": {
+    "key1": "newValue"
+  }
+}
+```
+
+===== Action history folder
+
+The action history folder stores all action patches. The folder must have the following structure and attributes:
+
+Location::: Can be external to the Capsium package or inside a composite Capsium package.
+Structure::: Each action patch is stored as a separate file within the folder.
+Filename Convention::: Each file name should be unique and can be based on the timestamp and user ID (e.g., `20240528T123456Z_user123_update_dataItem42.json`).
+File Content::: Each file must contain a valid action patch JSON object as specified above.
+
+Example:
+```
+action-history/
+  ├── 20240528T123456Z_user123_update_dataItem42.json
+  ├── 20240529T101112Z_user456_add_dataItem43.json
+  └── ...
+```
+
+Additional requirements for the action history folder:
+
+Access Control::: The folder must be secured to prevent unauthorized access. Only designated users or systems should have read/write access.
+Backup::: Regular backups of the action history folder should be maintained to prevent data loss.
+Versioning::: Each action patch should include a version attribute to manage changes to the action patch schema.
+
+Example of an action patch with versioning:
+```json
+{
+  "version": "1.0",
+  "timestamp": "2024-05-28T12:34:56Z",
+  "user": "user123",
+  "action": "update",
+  "datasetId": "dataset1",
+  "dataId": "dataItem42",
+  "changes": {
+    "key1": "newValue"
+  }
+}
+```
+
+===== Saving Data Changes in Datasets to a New External Capsium Package
+
+To save data changes in datasets to a new external Capsium package, the following configuration is required:
+
+Configuration File:: `save-external.json`
+Attributes::
+originalPackageId::: The identifier of the original Capsium package. Must be a string.
+newPackageId::: The identifier for the new external Capsium package. Must be a string.
+actionHistoryLocation::: The location of the action history folder. Must be a valid path.
+
+Example:
+```json
+{
+  "originalPackageId": "capsiumPkg1",
+  "newPackageId": "capsiumPkg2",
+  "actionHistoryLocation": "/path/to/action-history"
+}
+```
+
+The process for saving data changes includes the following steps:
+
+. Identify Changes: Collect all action patches related to the dataset modifications.
+. Create New Package: Generate a new Capsium package structure.
+. Include Action Patches: Copy the action patches to the new package's action history folder.
+. Update Metadata: Modify the `storage.json` and other relevant configuration files to reflect the new package and its contents.
+. Validate Package: Ensure that the new package meets all Capsium package requirements and is properly versioned.
+
+Example process:
+```shell
+# Collect action patches
+cp /path/to/action-history/* /new-package/action-history/
+
+# Create new package structure
+mkdir /new-package
+cp -r /original-package/* /new-package/
+
+# Update metadata
+jq '.packages += [{"id": "capsiumPkg2", "actionHistoryLocation": "/new-package/action-history"}]' /new-package/storage.json > /new-package/storage_tmp.json
+mv /new-package/storage_tmp.json /new-package/storage.json
+
+# Validate package
+capsium-validate /new-package
+```
+
+Additional considerations for creating a new external Capsium package:
+
+Integrity Checks:: Perform integrity checks to ensure that all data items and action patches are correctly included and no data corruption has occurred.
+Documentation:: Update the package documentation to reflect the changes and new version information.
+Notification:: Notify users or systems that depend on the package about the update to the new package.
+
+Example of integrity check:
+```shell
+capsium-check-integrity /new-package
+```
+
+Example of updating documentation:
+```markdown
+# Capsium Package Documentation
+
+## Package ID: capsiumPkg2
+Description:: This package includes updated datasets from capsiumPkg1 with action patches applied.
+Version:: 2.0
+Action History Location:: /new-package/action-history
+```
+
+===== Saving Data Changes in Datasets in a Composite Capsium Package That Contains the Current Package
+
+To save data changes in datasets in a composite Capsium package, the following configuration is required:
+
+Configuration File:: `save-composite.json`
+Attributes::
+originalPackageId::: The identifier of the original Capsium package. Must be a string.
+compositePackageId::: The identifier for the composite Capsium package. Must be a string.
+internalActionHistoryPath::: The path to the action history folder within the composite Capsium package. Must be a valid internal path.
+
+Example:
+```json
+{
+  "originalPackageId": "capsiumPkg1",
+  "compositePackageId": "compositeCapsiumPkg1",
+  "internalActionHistoryPath": "internal/action-history"
+}
+```
+
+The process for saving data changes in a composite Capsium package includes the following steps:
+
+. Identify Changes: Collect all action patches related to the dataset modifications.
+. Create Composite Package Structure: Ensure that the composite package contains the current package and an action history folder.
+. Include Action Patches: Copy the action patches to the action history folder within the composite package.
+. Update Metadata: Modify the `storage.json` and other relevant configuration files to reflect the composite package and its contents.
+. Validate Package: Ensure that the composite package meets all Capsium package requirements and is properly versioned.
+
+Example process:
+```shell
+# Collect action patches
+cp /path/to/action-history/* /composite-package/internal/action-history/
+
+# Create composite package structure
+mkdir /composite-package/internal
+cp -r /original-package/* /composite-package/internal/
+
+# Update metadata
+jq '.packages += [{"id": "compositeCapsiumPkg1", "internalActionHistoryPath": "internal/action-history"}]' /composite-package/storage.json > /composite-package/storage_tmp.json
+mv /composite-package/storage_tmp.json /composite-package/storage.json
+
+# Validate package
+capsium-validate /composite-package
+```
+
+Additional considerations for creating a composite Capsium package:
+
+Dependency Management::: Ensure that the composite package correctly references the current package and any other dependencies.
+Namespace Handling::: Manage namespaces to avoid conflicts between datasets from different packages.
+Testing::: Thoroughly test the composite package to ensure that the data changes are correctly applied and all functionalities work as expected.
+
+Example of dependency management:
+```json
+{
+  "compositePackageId": "compositeCapsiumPkg1",
+  "dependencies": [
+    {
+      "packageId": "capsiumPkg1",
+      "version": "1.0"
+    }
+  ],
+  "internalActionHistoryPath": "internal/action-history"
+}
+```
+
+Example of namespace handling:
+```json
+{
+  "datasetNamespaces": {
+    "capsiumPkg1": "namespace1",
+    "compositeCapsiumPkg1": "namespace2"
+  }
+}
+```
+
+Example of testing script:
+```shell
+# Test script for composite package
+capsium-test /composite-package
+
+# Validate composite package
+capsium-validate /composite-package
+```
+
+

@@ -1,0 +1,208 @@
+
+// == Introduction
+
+=== Testing
+
+==== General
+This clause specifies the structure and options for the Capsium package
+// This document specifies the structure and options for the Capsium package
+testing YAML format. This format is used to define tests for various aspects of
+Capsium packages, including HTTP routes, file existence, data validation, and
+configuration testing.
+
+// == Scope
+
+// This standard defines a YAML-based domain-specific language (DSL) for describing
+A YAML-based domain-specific language (DSL) for describing tests to be executed
+against Capsium packages is specified below. The DSL is designed to be
+programming language-independent, allowing for implementations in various
+languages.
+
+// == Normative References
+
+// * YAML Ain't Markup Language, Version 1.2, http://yaml.org/spec/1.2/spec.html
+// * JSON Schema, https://json-schema.org/
+// * The JSON Data Interchange Syntax, https://www.json.org/json-en.html
+
+// == Terms and Definitions
+
+// * _Capsium package_: A software package that adheres to the Capsium framework.
+// * _DSL_: Domain-Specific Language, a specialized language designed for a specific task.
+
+// == YAML Structure
+
+The Capsium testing YAML structure consists of a list of tests, each defined
+with specific attributes depending on the type of test. The top-level structure
+is as follows:
+
+[source,yaml]
+----
+tests:
+  - name: <Test Name>
+    type: <Test Type>
+    ...
+----
+
+==== Test Types and Options
+
+==== Route Testing
+
+Route testing is used to verify the behavior of HTTP endpoints. Each route test includes the following attributes:
+
+[source,yaml]
+----
+- name: <Test Name>
+  type: route
+  url: <URL>
+  expected_status: <HTTP Status Code>
+  response_contains: <Optional String to Check in Response>
+----
+
+* `name`: A descriptive name for the test.
+* `type`: Must be `route` for route testing.
+* `url`: The URL of the HTTP endpoint to be tested.
+* `expected_status`: The expected HTTP status code (e.g., `200`).
+* `response_contains`: (Optional) A string that should be present in the response body.
+
+Example:
+
+[source,yaml]
+----
+- name: Home Route Test
+  type: route
+  url: "http://localhost:8000/home"
+  expected_status: 200
+  response_contains: "Welcome"
+----
+
+==== File Testing
+
+File testing checks for the existence of required files. Each file test includes the following attributes:
+
+[source,yaml]
+----
+- name: <Test Name>
+  type: file
+  path: <File Path>
+----
+
+* `name`: A descriptive name for the test.
+* `type`: Must be `file` for file existence testing.
+* `path`: The file path to be checked.
+
+Example:
+
+[source,yaml]
+----
+- name: Config File Exists
+  type: file
+  path: "/path/to/config.json"
+----
+
+==== Data Validation
+
+Data validation tests validate datasets against predefined schemas. Each data validation test includes the following attributes:
+
+[source,yaml]
+----
+- name: <Test Name>
+  type: data_validation
+  format: <Data Format>
+  data_file: <Data File Path>
+  schema_file: <Schema File Path>
+----
+
+* `name`: A descriptive name for the test.
+* `type`: Must be `data_validation` for data validation tests.
+* `format`: The format of the data file (e.g., `json`, `yaml`).
+* `data_file`: The path to the data file to be validated.
+* `schema_file`: The path to the schema file to validate against.
+
+Example:
+
+[source,yaml]
+----
+- name: JSON Data Validation
+  type: data_validation
+  format: json
+  data_file: "/path/to/datafile.json"
+  schema_file: "/path/to/schemafile.json"
+----
+
+==== Configuration Testing
+
+Configuration testing ensures that configuration files are correctly structured and valid. Each configuration test includes the following attributes:
+
+[source,yaml]
+----
+- name: <Test Name>
+  type: config
+  format: <Config Format>
+  config_file: <Config File Path>
+----
+
+* `name`: A descriptive name for the test.
+* `type`: Must be `config` for configuration file validation.
+* `format`: The format of the configuration file (e.g., `json`, `yaml`).
+* `config_file`: The path to the configuration file to be validated.
+
+Example:
+
+[source,yaml]
+----
+- name: JSON Config Validation
+  type: config
+  format: json
+  config_file: "/path/to/config.json"
+----
+
+== Complete Example
+
+Below is a complete example of a Capsium package testing YAML file, demonstrating various test types and their options:
+
+[source,yaml]
+----
+tests:
+  - name: Home Route Test
+    type: route
+    url: "http://localhost:8000/home"
+    expected_status: 200
+    response_contains: "Welcome"
+
+  - name: API Route Test
+    type: route
+    url: "http://localhost:8000/api/data"
+    expected_status: 200
+    response_contains: "data"
+
+  - name: Config File Exists
+    type: file
+    path: "/path/to/config.json"
+
+  - name: Data File Exists
+    type: file
+    path: "/path/to/datafile.json"
+
+  - name: JSON Data Validation
+    type: data_validation
+    format: json
+    data_file: "/path/to/datafile.json"
+    schema_file: "/path/to/schemafile.json"
+
+  - name: YAML Data Validation
+    type: data_validation
+    format: yaml
+    data_file: "/path/to/datafile.yaml"
+    schema_file: "/path/to/schemafile.yaml"
+
+  - name: JSON Config Validation
+    type: config
+    format: json
+    config_file: "/path/to/config.json"
+----
+
+== Conformance
+
+To conform to this standard, an implementation must correctly interpret and execute the tests defined in the Capsium package testing YAML format as described in this document. Implementations may be developed in any programming language, provided they adhere to the specified structure and options.
+
+

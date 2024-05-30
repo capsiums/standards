@@ -1,0 +1,451 @@
+
+=== Resource routing
+
+==== General
+
+Resource routing defines how requests to the Capsium package are handled and
+routed.
+
+The `routes.json` file is the central configuration for routing within your
+package. It maps URL paths to resources or handlers, including both static data
+and dynamic HTTP API routes.
+
+The routing file `routes.json` is the single source of truth for routing in the
+package, simplifying management and ensuring consistency. This setup covers
+static resource routing, dynamic API endpoints, and the essential configurations
+for headers and HTTP methods.
+
+When the `routes.json` file doesn't exist, automatically generate it based on
+the contents in the manifest. When it is an HTML file, create 2 routes, one with
+the file's base name, one with the full file name. When a file of another type,
+generate the route relative from the content/ path.
+
+
+
+Example `routes.json`::
+
+[source,json]
+----
+{
+    "index": "index.html",
+    "routes": [
+        // Static resource routes
+        {
+            "path": "/",
+            "resource": "index.html"
+        },
+        {
+            "path": "/styles.css",
+            "resource": "styles.css"
+        },
+        {
+            "path": "/app.js",
+            "resource": "app.js"
+        },
+        {
+            "path": "/images/small.jpg",
+            "resource": "images/small.jpg"
+        },
+        {
+            "path": "/data/users",
+            "resource": "data/users.json"
+        },
+        {
+            "path": "/data/products",
+            "resource": "data/products.json"
+        },
+
+        // HTTP API routes
+        {
+            "path": "/api/v1/users",
+            "method": "GET",
+            "handler": "api/v1/users/getUsers.js"
+        },
+        {
+            "path": "/api/v1/users",
+            "method": "POST",
+            "handler": "api/v1/users/createUser.js"
+        },
+        {
+            "path": "/api/v1/users/:id",
+            "method": "PUT",
+            "handler": "api/v1/users/updateUser.js"
+        },
+        {
+            "path": "/api/v1/users/:id",
+            "method": "DELETE",
+            "handler": "api/v1/users/deleteUser.js"
+        }
+    ]
+}
+----
+
+In this example, the `routes.json` file includes routes for both static
+resources (like HTML, CSS, images, and data files) and dynamic HTTP API
+endpoints.
+
+
+
+==== Index route
+
+The `index` key in the `routes.json` file designates the entry point or root file of the Capsium package. This key is crucial for defining the primary file that the system should load or execute.
+
+===== Requirements for index Key
+
+. File Path:
+** The `index` key should be a string representing the relative path to the root file from the root directory of the package.
+** The path should be valid and point to an existing file within the package.
+
+. File Type:
+** The root file can be of various types depending on the nature of the package (e.g., JavaScript, HTML, JSON). Ensure the file type is appropriate for the package's purpose.
+
+. Uniqueness:
+** There should be only one `index` key in the `routes.json` file, specifying a single root file.
+
+. Consistency:
+** The path specified by the `index` key should be consistent with the project's structure and should not include typos or incorrect directory names.
+
+===== Examples of index Key
+
+HTML Entry Point::
+[source,json]
+----
+   {
+       "index": "public/index.html"
+   }
+----
+** This specifies that the root file for the package is `index.html` located in the `public` directory.
+
+
+By adhering to these requirements and examples, the `index` key in the `routes.json` file ensures that the Capsium package has a clearly defined entry point, facilitating proper loading and execution of the package.
+
+
+[[dataset-routes]]
+==== Dataset routes
+
+// TODO: Add specification on how to format data response and parse requests.
+
+
+Mounting routes to data sets involves configuring specific endpoints that provide access to various data sets within the package. This allows for organized and efficient data retrieval, enabling users to access the data they need through well-defined routes. All data route mounts will use the HTTP path mount point `/api/v1/data/` as the root.
+
+Route definition:: Specifies the URL path that will be used to access the data set, using `/api/v1/data/` as the root.
+Data source:: Defines the source of the data, such as a file path, database query, or external API.
+Access control:: Configurations to manage who can access the data and under what conditions.
+Response format:: Specifies the format in which the data will be returned, such as JSON, XML, or CSV.
+
+Dataset routes should be mounted as specified in `routes.json`, with each route pointing to a key `dataset` that is provided in `storage.json`.
+
+Example of `storage.json`:
+
+[source,json]
+----
+{
+    "storage": {
+        "dataSets": {
+            "users": {
+                "source": "db/users",
+            },
+            "products": {
+                "source": "files/products.json",
+            },
+            "sales": {
+                "source": "api/external/sales",
+            }
+        }
+    }
+}
+----
+
+Example of `routes.json`:
+
+[source,json]
+----
+{
+    "routes": [
+        {
+            "route": "/api/v1/data/users",
+            "dataset": "users",
+            "accessControl": {
+                "roles": ["admin", "user"],
+                "authenticationRequired": true
+            }
+        },
+        {
+            "route": "/api/v1/data/products",
+            "dataset": "products",
+            "accessControl": {
+                "roles": ["admin"],
+                "authenticationRequired": true
+            }
+        },
+        {
+            "route": "/api/v1/data/sales",
+            "dataset": "sales",
+            "accessControl": {
+                "roles": ["admin"],
+                "authenticationRequired": true
+            }
+        }
+    ]
+}
+----
+
+In this example, `routes.json` defines three routes, each pointing to a data set specified in `storage.json`:
+
+Users data set::
+  * Route: `/api/v1/data/users`
+  * Dataset: `users` (refers to the `users` key in `storage.json`)
+  * Access control: Only accessible by users with `admin` or `user` roles, and authentication is required.
+
+Products data set::
+  * Route: `/api/v1/data/products`
+  * Dataset: `products` (refers to the `products` key in `storage.json`)
+  * Access control: Only accessible by users with the `admin` role, and authentication is required.
+
+Sales data set::
+  * Route: `/api/v1/data/sales`
+  * Dataset: `sales` (refers to the `sales` key in `storage.json`)
+  * Access control: Only accessible by users with the `admin` role, and authentication is required.
+
+==== Attributes summary
+
+.Table 1: Storage Attributes
+[cols="2,4", options="header"]
+|===
+| Attribute | Description
+| Storage   | The root object for storage configuration.
+|===
+
+.Table 2: DataSets Attributes (in `storage.json`)
+[cols="2,4", options="header"]
+|===
+| Attribute        | Description
+| Source           | The source of the data (e.g., database path, file path, external API URL).
+| Response format  | The format in which the data will be returned (e.g., `json`, `xml`, `csv`).
+|===
+
+.Table 3: Routes Attributes (in `routes.json`)
+[cols="2,4", options="header"]
+|===
+| Attribute     | Description
+| Route         | The URL path for accessing the data set, starting with `/api/v1/data/`.
+| Dataset       | The key in `storage.json` that this route points to.
+| Access control| Object containing access control settings.
+|===
+
+.Table 4: Access Control Attributes
+[cols="2,4", options="header"]
+|===
+| Attribute            | Description
+| Roles                | Specifies the roles that are allowed to access the data set.
+| Authentication required | Specifies whether authentication is required to access the data set.
+|===
+
+By configuring these attributes, Capsium packages can effectively manage data storage and provide structured access to data sets through defined routes. This ensures data can be securely and efficiently retrieved by authorized users.
+
+
+==== Header responses
+
+===== General
+
+In the Capsium package, resource routing allows you to map URLs to specific
+resources and define how they should be handled. One crucial aspect of resource
+routing is defining header responses, which can be done directly in the
+`routes.json` file or via external files.
+
+===== Inline declarations
+
+You can specify header responses directly within the `routes.json` file. This
+approach embeds the header definitions within the routing configuration, making
+it straightforward to manage.
+
+Example:
+[source,json]
+----
+{
+    "routes": {
+        "/api/resource": {
+            "GET": {
+                "file": "handlers/getResource.js",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Cache-Control": "no-cache",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            },
+            "POST": {
+                "file": "handlers/postResource.js",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            }
+        }
+    }
+}
+----
+
+In this example:
+- The `GET` method for `/api/resource` has headers defined directly in the `routes.json` file.
+- The `POST` method for `/api/resource` also defines its headers directly.
+
+===== Declaring through external files
+
+Alternatively, you can manage header definitions in external files, which can be
+useful for maintaining cleaner and more modular configurations.
+
+Example:
+[source,json]
+----
+{
+    "routes": {
+        "/api/resource": {
+            "GET": {
+                "file": "handlers/getResource.js",
+                "headersFile": "headers/getResourceHeaders.json"
+            },
+            "POST": {
+                "file": "handlers/postResource.js",
+                "headersFile": "headers/postResourceHeaders.json"
+            }
+        }
+    }
+}
+----
+
+In this example:
+- The `GET` method for `/api/resource` references an external file `headers/getResourceHeaders.json` for headers.
+- The `POST` method for `/api/resource` references an external file `headers/postResourceHeaders.json` for headers.
+
+The content of `headers/getResourceHeaders.json` might look like this:
+[source,json]
+----
+{
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Access-Control-Allow-Origin": "*"
+}
+----
+
+And `headers/postResourceHeaders.json` might look like this:
+[source,json]
+----
+{
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+}
+----
+
+By using these mechanisms, you can effectively manage and define header responses in the Capsium package, either directly within the `routes.json` file or through external files for better modularity and maintainability.
+
+==== Route visibility
+
+Route visibility in the Capsium package is managed through the `routes.json` file, where routes can be designated as either `exported` or `private`. This designation determines whether the route can be re-used by other packages or is restricted to the current package.
+
+Requirements and Specifications::
+
+. Route Declaration:
+** Routes must be declared in the `routes.json` file.
+** Each route entry should include the path to the resource and its visibility status.
+
+. Visibility Options:
+Exported::: Routes marked as `exported` are available for re-use by other packages that depend on the current package.
+Private::: Routes marked as `private` are restricted to the current package and cannot be accessed by other packages.
+
+. Example Configuration:
+** An example `routes.json` file demonstrating route visibility:
+[source,json]
+----
+     {
+         "routes": [
+             {
+                 "path": "/api/public",
+                 "handler": "publicHandler",
+                 "visibility": "exported"
+             },
+             {
+                 "path": "/api/private",
+                 "handler": "privateHandler",
+                 "visibility": "private"
+             }
+         ]
+     }
+----
+
+==== Route Inheritance and Processing
+
+The Capsium package supports inheriting routes from dependency packages, allowing for remapping, rewriting responses, enhancing response headers, or supplanting request headers. This flexibility enables packages to extend and modify the behavior of routes defined in their dependencies.
+
+Requirements and Specifications::
+
+. Inheriting Routes:
+** Inherited routes must be declared in the `routes.json` file of the dependent package.
+** An inherited route should specify the package and the original route path.
+
+. Remapping Routes:
+** Inherited routes can be remapped to a new path in the dependent package.
+
+. Rewriting Responses:
+** The system should allow for rewriting the response of an inherited route, either by modifying the content or altering the headers.
+
+. Enhancing Response Headers:
+** Additional headers can be added to the response of an inherited route to enhance security, performance, or other attributes.
+
+. Supplanting Request Headers:
+** Request headers can be modified or added before forwarding the request to the inherited route.
+
+. Example Configuration:
+** An example `routes.json` file demonstrating route inheritance and processing:
+[source,json]
+----
+     {
+         "dependencies": {
+             "capsium-core": "1.0.0"
+         },
+         "routes": [
+             {
+                 "path": "/api/exported",
+                 "handler": "node_modules/capsium-core/handlers/publicHandler",
+                 "visibility": "exported"
+             },
+             {
+                 "path": "/api/remapped",
+                 "handler": "node_modules/capsium-core/handlers/publicHandler",
+                 "visibility": "private",
+                 "remap": "/api/newpath"
+             },
+             {
+                 "path": "/api/rewritten",
+                 "handler": "node_modules/capsium-core/handlers/publicHandler",
+                 "visibility": "private",
+                 "responseRewrite": {
+                     "body": "Modified response content",
+                     "headers": {
+                         "X-Custom-Header": "CustomValue"
+                     }
+                 }
+             },
+             {
+                 "path": "/api/enhanced",
+                 "handler": "node_modules/capsium-core/handlers/publicHandler",
+                 "visibility": "exported",
+                 "responseHeaders": {
+                     "Cache-Control": "no-cache",
+                     "X-Enhanced-Header": "EnhancedValue"
+                 }
+             },
+             {
+                 "path": "/api/supplanted",
+                 "handler": "node_modules/capsium-core/handlers/publicHandler",
+                 "visibility": "private",
+                 "requestHeaders": {
+                     "Authorization": "Bearer new-token",
+                     "X-Forwarded-For": "client-ip"
+                 }
+             }
+         ]
+     }
+----
+
+By clearly defining and adhering to these visibility, inheritance, and processing rules, the Capsium package ensures that resource routing is both flexible and secure, enabling effective re-use of routes while protecting private routes and allowing for extensive customization.
+

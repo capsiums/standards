@@ -1,0 +1,128 @@
+== Introduction
+
+=== General
+
+The digital era demands advanced, secure, and efficient methods for deploying
+and exchanging information. As organizations contend with multi-format data
+across diverse platforms, the limitations of traditional web packaging solutions
+become increasingly apparent.
+
+Capsium answers this need with a modular framework designed for the efficient
+and secure interchange of multi-format information within interoperable and
+portable packages.
+
+Capsium uniquely supports the packaging and deployment of "non-application
+websites" or "non-server-side application websites" by delegating those
+functions to the Capsium reactor, which does not depend on a web server and can
+be directly implemented by the browser, mimicking the file-serving capabilities
+of a web server.
+
+
+=== Features
+
+Today's complex digital landscape highlight the necessity for Capsium.
+
+* Portability: There is a critical need for data and applications to be easily
+transferable across different environments without compromising security or
+functionality. Capsium ensures that packages can be seamlessly moved between
+platforms.
+
+* Data immutability: Ensuring that data remains unchanged and secure from
+tampering is essential for maintaining integrity and trust. Capsium guarantees
+data immutability through advanced cryptographic techniques, crucial for
+compliance and auditing.
+
+* Interoperability: Diverse systems and applications must communicate
+effectively. Capsium supports a wide range of formats and protocols, ensuring
+seamless integration and data exchange across different platforms.
+
+* Single-page applications (SPAs): Modern web applications demand dynamic,
+responsive user experiences. Capsium supports the development and deployment of
+SPAs, reducing server dependency and enhancing performance.
+
+* Capsium Reactors: To meet varied deployment needs, Capsium introduces reactors
+that can be installed on user machines or servers, managing and deploying
+Capsium packages with flexibility and scalability, without the need for a
+traditional web server.
+
+
+=== Comparison with existing solutions
+
+Capsium's unique approach addresses the deficiencies of existing packaging
+solutions for non-application websites and web applications, which are all
+unsuitable for the use case.
+
+The following packaging solutions are listed in order of an decreasing level of
+virtualization.
+
+* Website bundles:
+** Examples: Safari webarchive (extension `.webarchive`), WARC (extension: `.warc`), Mozilla Archive Format (MAFF, `.maff`), Microsoft Compiled HTML Help (CHM, extension `.chm`) and MHTML/MHT (MIME Encapsulation of Aggregate HTML Documents, extension: `.mhtml`, `.mht`) (defined in RFC 2110 and RFC 2557).
+** Purpose: Bundle website resources for offline access and archival.
+** Limitations: Not interoperable and difficult to implement across different browsers. Do not support server-side deployments. Unable to contain single-page applications that require rich HTML API interfaces.
+
+* Client-side web application bundles:
+** Examples: Electron, NW.js.
+** Purpose: Bundle a browser and a web server along with necessary language interpreters.
+** Limitations: Resulting bundles are often very large and cumbersome to distribute, requiring significant memory for simple outputs. Introduce non-platform-independent executable code, complicating data management processes.
+
+* Server-side web application bundles:
+** Examples: Webpack, Gulp (JavaScript); Maven (Java); Bundler (Ruby); pip and setuptools (Python).
+** Purpose: Automate bundling of static assets and dependencies, improving load times and simplifying development workflows.
+** Limitations: Require a large number of dependencies and permissions for port opening and listening. Necessitate running a server, which can be complex and resource-intensive.
+
+* Containers:
+** Examples: Docker, LXC.
+** Purpose: Allow entire applications and their dependencies to be packaged into portable containers, enhancing deployment consistency.
+** Limitations: Require virtualization permissions on the machine, which can be a barrier for some environments. Resource-intensive.
+
+* Virtual machines:
+** Examples: VMWare, Xen.
+** Purpose: Provide complete isolation and can run different operating systems on a single hardware host.
+** Limitations: Require permissions at the hardware level and can be resource-intensive.
+
+
+=== Benefits
+
+Capsium addresses the shortcomings of previous solutions and offers unique benefits:
+
+* Interoperability: Supports a variety of formats and protocols, enabling seamless communication between different systems and platforms.
+
+* Portability: Capsium packages are easily transferable, facilitating data migration and deployment without compromising security or functionality.
+
+* Efficiency: Optimizes deployment processes for SPAs and static websites, reducing server dependency and improving performance.
+
+* Security: Utilizing advanced encryption and key management, Capsium ensures secure storage and transfer of information.
+
+* Compliance and auditing: Features for tracking data access and modifications ensure regulatory compliance and robust auditing capabilities.
+
+* Capsium reactors: Provide flexible and scalable package management and deployment solutions, eliminating the need for traditional server infrastructure.
+
+
+=== Data management impact
+
+Capsium modernizes and transforms data management practices in several key ways:
+
+* Enhanced Security: Prioritizes data immutability and advanced encryption,
+helping organizations mitigate data breach risks.
+
+* Improved Interoperability: Facilitates greater integration and communication
+across different systems, driving innovation and efficiency.
+
+* Portability: Simplifies the transfer of data and applications across different
+environments, reducing the effort and risk associated with migration.
+
+* Efficiency: Streamlines deployment processes, particularly for SPAs and static
+websites, leading to faster load times and reduced server loads.
+
+* Compliance and Auditing: Facilitates adherence to regulatory requirements by
+ensuring data integrity and providing robust tracking of data access and
+modifications.
+
+=== Summary
+
+Capsium represents a significant advancement in the realm of data management,
+addressing critical needs for security, interoperability, portability,
+efficiency, and compliance. Its innovative approach transforms how
+organizations handle data, making it a vital tool in the modern digital
+landscape.
+

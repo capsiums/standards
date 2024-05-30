@@ -1,0 +1,518 @@
+== Capsium Reactor
+
+The Capsium reactor is the execution environment responsible for running Capsium packages. It supports various deployment environments, provides APIs for introspection, manages user authentication and data security, and ensures reliable and trusted execution of packages.
+
+=== Structure
+
+The structure of a Capsium reactor typically includes:
+
+Core Engine:: The core runtime that executes Capsium packages.
+Configuration Files:: Settings and configurations for the reactor's operation.
+Plugins:: Optional plugins for additional functionality (e.g., authentication, logging).
+APIs:: Interfaces for introspection, monitoring, and management.
+
+Directory structure example:
+```
+capsium-reactor/
+├── core/
+│   ├── engine.js
+│   ├── config/
+│   │   ├── settings.json
+│   │   └── plugins.json
+├── plugins/
+│   ├── auth-plugin.js
+│   ├── logging-plugin.js
+├── apis/
+│   ├── introspection-api.js
+│   ├── monitoring-api.js
+│   └── package-api.js
+├── logs/
+└── data/
+```
+
+=== Operation Environments
+
+The Capsium reactor is designed to operate in various environments to provide flexibility and scalability.
+
+==== Reactor in the Browser Natively or as a Plugin
+
+Natively:: The reactor can run directly in the browser using WebAssembly or JavaScript, allowing for client-side execution of Capsium packages.
+  * Requirements: Modern web browser with WebAssembly and JavaScript support.
+  * Use Cases: Client-side applications, browser extensions.
+
+As a Plugin:: The reactor can be embedded as a browser plugin, providing additional capabilities and tighter integration with browser features.
+  * Requirements: Plugin installation, browser compatibility.
+  * Use Cases: Enhanced browser extensions, specific web application functionalities.
+
+==== Reactor in the Web Server as a Plugin
+
+Web Server Plugin:: The reactor can be deployed as a plugin in web servers such as Apache, Nginx, or Node.js.
+  * Requirements: Compatible web server, plugin installation.
+  * Use Cases: Server-side applications, API backends.
+
+Example configuration for Node.js:
+```javascript
+const capsiumReactor = require('capsium-reactor');
+const express = require('express');
+const app = express();
+
+app.use('/capsium', capsiumReactor());
+
+app.listen(3000, () => {
+  console.log('Capsium reactor running on port 3000');
+});
+```
+
+==== Reactor on Cloud Services (AWS S3 or GitHub Pages)
+
+AWS S3::
+  * Deployments can be hosted on AWS S3 as static websites.
+  * Requirements: AWS S3 bucket, configuration for static website hosting.
+  * Use Cases: Hosting static applications, deploying packages with minimal backend requirements.
+
+GitHub Pages::
+  * Deployments can be hosted on GitHub Pages for easy access and version control.
+  * Requirements: GitHub repository, Pages configuration.
+  * Use Cases: Open-source projects, documentation sites.
+
+Example GitHub Pages setup:
+```
+1. Create a GitHub repository.
+2. Push your Capsium package to the repository.
+3. Enable GitHub Pages in the repository settings.
+4. Access your package at `https://<username>.github.io/<repository>/`.
+```
+
+=== HTTP API for Introspection of Reactor
+
+The reactor provides an HTTP API for introspection, allowing users to query the reactor's status, configuration, and operational metrics.
+
+Endpoints::
+  * `/introspect/status`: Returns the current status of the reactor.
+  * `/introspect/config`: Returns the reactor's configuration details.
+  * `/introspect/metrics`: Returns operational metrics (e.g., uptime, resource usage).
+
+Example API response for `/introspect/status`:
+[source,json]
+----
+{
+  "status": "running",
+  "uptime": 3600,
+  "packagesLoaded": 5
+}
+----
+
+=== HTTP API for Introspection of Package
+
+The reactor also provides an HTTP API to introspect individual Capsium packages, enabling users to retrieve package-specific information.
+
+Endpoints::
+  * `/package/:packageId/status`: Returns the status of the specified package.
+  * `/package/:packageId/metadata`: Returns the metadata of the specified package.
+  * `/package/:packageId/logs`: Returns the logs related to the specified package.
+
+Example API response for `/package/:packageId/metadata`:
+[source,json]
+----
+{
+  "name": "example-package",
+  "version": "1.0.0",
+  "description": "An example Capsium package",
+  "author": "Author Name"
+}
+----
+
+=== Access to Activated Capsium Package Information, Metadata
+
+The reactor maintains detailed information and metadata for each activated Capsium package. This information includes version details, dependencies, and configuration settings.
+
+Access Methods::
+  * Via HTTP API: Endpoints such as `/package/:packageId/metadata` provide access to package metadata.
+  * Via Configuration Files: Metadata can be stored and accessed through configuration files within the reactor's directory structure.
+
+Example metadata structure:
+[source,json]
+----
+{
+  "packages": {
+    "example-package": {
+      "name": "example-package",
+      "version": "1.0.0",
+      "description": "An example Capsium package",
+      "author": "Author Name",
+      "dependencies": ["dependency1", "dependency2"],
+      "config": {
+        "option1": "value1",
+        "option2": "value2"
+      }
+    }
+  }
+}
+----
+
+=== Monitoring and Logging
+
+The Capsium reactor includes robust monitoring and logging capabilities to ensure smooth operation and facilitate troubleshooting.
+
+Monitoring::
+  * Health Checks: Periodic checks to ensure the reactor and its packages are running correctly.
+  * Metrics Collection: Collection of performance metrics such as CPU and memory usage, request counts, and error rates.
+
+Logging::
+  * Access Logs: Logs of all incoming requests and their responses.
+  * Error Logs: Detailed logs of errors encountered during operation.
+  * Custom Logs: Logs generated by individual packages for specific events.
+
+Example logging configuration in `plugins/logging-plugin.js`:
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+module.exports = function loggingPlugin(req, res, next) {
+  const logEntry = `${new Date().toISOString()} - ${req.method} ${req.url}\n`;
+  fs.appendFileSync(path.join(__dirname, '../logs/access.log'), logEntry);
+  next();
+};
+```
+
+=== Handling User Authentication (Apache passwd, External OAuth Authentication Defined by Packages)
+
+The reactor supports various user authentication methods to secure access to its resources:
+
+Apache passwd:: Uses `.htpasswd` files for basic HTTP authentication.
+  * Requirements: `.htpasswd` file containing user credentials.
+  * Use Cases: Simple authentication for small deployments.
+
+External OAuth:: Supports OAuth authentication as defined by individual packages.
+  * Configuration: OAuth provider details need to be configured.
+  * Use Cases: Integration with third-party authentication providers like Google, Facebook, or custom OAuth servers.
+
+Example configuration for OAuth in `auth-plugin.js`:
+```javascript
+const passport = require('passport');
+const OAuth2Strategy = require('passport-oauth2').Strategy;
+
+passport.use(new OAuth2Strategy({
+  authorizationURL: 'https://example.com/oauth/authorize',
+  tokenURL: 'https://example.com/oauth/token',
+  clientID: 'your-client-id',
+  clientSecret: 'your-client-secret',
+  callbackURL: 'https://your-app.com/callback'
+}, (accessToken, refreshToken, profile, cb) => {
+  // Verify and handle user profile
+  cb(null, profile);
+}));
+
+app.use(passport.initialize());
+app.get('/auth/example', passport.authenticate('oauth2'));
+app.get('/callback', passport.authenticate('oauth2', { failureRedirect: '/' }), (req, res) => {
+  res.redirect('/');
+});
+```
+
+=== Decrypting User Data
+
+The reactor includes mechanisms for securely decrypting user data, ensuring it remains protected while in transit and at rest.
+
+Encryption Algorithms:: Supports standard encryption algorithms such as AES-256.
+Key Management:: Secure storage and management of encryption keys.
+API for Decryption:: Provides an API for decrypting user data when needed.
+
+Example decryption function in `data-handler.js`:
+```javascript
+const crypto = require('crypto');
+
+function decryptData(encryptedData, key) {
+  const decipher = crypto.createDecipher('aes-256-cbc', key);
+  let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+```
+
+=== Updating Modifiable Capsium Packages
+
+The reactor allows for the dynamic updating of modifiable Capsium packages, ensuring that packages can be kept up-to-date without downtime.
+
+Update Mechanism:: Supports hot-swapping of packages with minimal disruption.
+Version Control:: Keeps track of package versions and allows rollback if necessary.
+API for Updates:: Provides an API for updating packages.
+
+Example update API endpoint in `update-api.js`:
+```javascript
+app.post('/update-package/:packageId', (req, res) => {
+  const packageId = req.params.packageId;
+  const newPackageData = req.body; // Assume package data is sent in the request body
+  try {
+    // Logic to update the package
+    res.status(200).send({ message: 'Package updated successfully' });
+  } catch (error) {
+    res.status(500).send({ message: 'Failed to update package', error });
+  }
+});
+```
+
+=== Trusted Execution
+
+The reactor ensures trusted execution of Capsium packages by enforcing security
+measures and maintaining integrity throughout the runtime.
+
+Sandboxing:: Each package runs in an isolated environment to prevent interference and enhance security.
+  * Requirements: Use of technologies like Docker containers or virtual machines.
+  * Use Cases: Running untrusted code, ensuring package isolation.
+
+Code Signing:: All packages must be signed by a trusted authority to verify their integrity and authenticity.
+  * Requirements: Digital certificates and a trusted certificate authority (CA).
+  * Use Cases: Preventing tampering and ensuring only authorized packages are executed.
+
+Integrity Checks:: Regular integrity checks are performed to ensure that packages have not been altered.
+  * Methods: Hash verification, signature validation.
+  * Use Cases: Detecting unauthorized changes, maintaining trust.
+
+Audit Logs:: Detailed logs of all operations and accesses are maintained to provide an audit trail.
+  * Requirements: Comprehensive logging infrastructure.
+  * Use Cases: Security audits, forensic analysis.
+
+Example sandboxing setup using Docker:
+```dockerfile
+# Dockerfile for a Capsium package
+FROM node:14
+
+WORKDIR /app
+
+COPY . .
+
+RUN npm install
+
+CMD ["node", "index.js"]
+```
+
+Example code signing process:
+. Generate a key pair:
+   ```bash
+   openssl genrsa -out private.key 2048
+   openssl rsa -in private.key -pubout -out public.key
+   ```
+
+. Sign the package:
+   ```bash
+   openssl dgst -sha256 -sign private.key -out package.sig package.zip
+   ```
+
+. Verify the signature:
+   ```bash
+   openssl dgst -sha256 -verify public.key -signature package.sig package.zip
+   ```
+
+With these detailed requirements and specifications, the Capsium reactor ensures a secure, flexible, and robust environment for executing Capsium packages across various deployment scenarios.
+
+
+=== Monitoring HTTP API
+
+The Capsium reactor provides a comprehensive Monitoring HTTP API designed to expose various details about the reactor and its packages. This API is particularly useful for browser users who need to access metadata, routes, content hashes, and validity information directly from the browser. All endpoints are namespaced under `/api/v1/introspect`.
+
+==== Exposing metadata.json
+
+The `metadata.json` file contains essential information about the Capsium packages, including their names, versions, authors, and descriptions. The Monitoring HTTP API provides an endpoint to retrieve this information.
+
+Endpoint:: `/api/v1/introspect/metadata`
+Method:: GET
+Response:: JSON containing the metadata of all active packages.
+
+Example response:
+[source,json]
+----
+{
+  "packages": [
+    {
+      "name": "example-package",
+      "version": "1.0.0",
+      "author": "Author Name",
+      "description": "An example Capsium package"
+    },
+    {
+      "name": "another-package",
+      "version": "2.0.0",
+      "author": "Another Author",
+      "description": "Another example Capsium package"
+    }
+  ]
+}
+----
+
+==== Exposing routes.json
+
+The `routes.json` file lists all the available routes provided by the Capsium packages. This is critical for understanding the API surface and available endpoints.
+
+Endpoint:: `/api/v1/introspect/routes`
+Method:: GET
+Response:: JSON containing the routes of all active packages.
+
+Example response:
+[source,json]
+----
+{
+  "routes": [
+    {
+      "package": "example-package",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/example"
+        }
+      ]
+    },
+    {
+      "package": "another-package",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/another"
+        }
+      ]
+    }
+  ]
+}
+----
+
+==== Exposing packaged content hashes
+
+To ensure content integrity, the reactor can expose the hashes of the packaged content. This allows users to verify that the content has not been tampered with.
+
+Endpoint:: `/api/v1/introspect/content-hashes`
+Method:: GET
+Response:: JSON containing the hashes of all packaged content.
+
+Example response:
+[source,json]
+----
+{
+  "contentHashes": [
+    {
+      "package": "example-package",
+      "hash": "abcd1234efgh5678ijkl9012mnop3456qrst6789uvwx0123yzab4567cdef8901"
+    },
+    {
+      "package": "another-package",
+      "hash": "1234abcd5678efgh9012ijkl3456mnop6789qrst0123uvwx4567yzab8901cdef"
+    }
+  ]
+}
+----
+
+==== Exposing content validity information
+
+The reactor can also expose information regarding the validity of the packaged content. This includes checks on whether the content has passed integrity checks and is trusted for execution.
+
+Endpoint:: `/api/v1/introspect/content-validity`
+Method:: GET
+Response:: JSON containing the validity status of all packaged content.
+
+Example response:
+[source,json]
+----
+{
+  "contentValidity": [
+    {
+      "package": "example-package",
+      "valid": true,
+      "lastChecked": "2024-05-28T12:34:56Z"
+    },
+    {
+      "package": "another-package",
+      "valid": false,
+      "lastChecked": "2024-05-28T12:34:56Z",
+      "reason": "Signature mismatch"
+    }
+  ]
+}
+----
+
+
+=== Deploy configuration
+
+When deploying a Capsium package to a Capsium reactor, an optional configuration file named `deploy.json` can be provided to control the behavior of the package in the deployed environment. This file allows fine-tuning of various aspects, including logging and monitoring options, data storage, deployment performance requirements, and server-side secrets.
+
+==== Structure of `deploy.json`
+
+The `deploy.json` file should be a JSON-formatted file with the following sections:
+
+logging:: Options for controlling logging behavior.
+monitoring:: Configuration for monitoring the package.
+dataStorage:: Settings for data storage.
+performance:: Deployment performance requirements.
+secrets:: Server-side secrets, such as OAuth secrets.
+
+==== Example `deploy.json` File
+
+[source,json]
+----
+{
+  "logging": {
+    "level": "DEBUG",
+    "file": "/var/log/capsium/example-package.log",
+    "format": "json"
+  },
+  "monitoring": {
+    "enabled": true,
+    "endpoint": "http://monitoring.example.com/api/v1/metrics",
+    "interval": "60s"
+  },
+  "dataStorage": {
+    "type": "filesystem",
+    "path": "/var/data/capsium/example-package"
+  },
+  "performance": {
+    "maxMemory": "512MB",
+    "maxCPU": "2"
+  },
+  "secrets": {
+    "oauthSecret": "supersecretkey"
+  }
+}
+----
+
+==== Detailed Specifications
+
+===== Logging and Monitoring Options
+
+The `logging` and `monitoring` sections control how the package logs information and integrates with monitoring systems.
+
+logging.level:: Defines the logging level (e.g., DEBUG, INFO, WARN, ERROR).
+logging.file:: Specifies the file path where logs should be written.
+logging.format:: Determines the format of the logs (e.g., plain text, JSON).
+monitoring.enabled:: A boolean to enable or disable monitoring.
+monitoring.endpoint:: The URL of the monitoring system's API endpoint.
+monitoring.interval:: The interval at which monitoring data should be sent.
+
+===== Data Storage
+
+The `dataStorage` section specifies configurations for data storage.
+
+dataStorage.type:: The type of data storage (e.g., filesystem).
+dataStorage.path:: The file system path where data should be stored.
+
+===== Deployment Performance Requirements
+
+The `performance` section defines the performance requirements for the deployed package.
+
+performance.maxMemory:: The maximum amount of memory the package is allowed to use (e.g., "512MB").
+performance.maxCPU:: The maximum number of CPU cores the package can utilize (e.g., "2").
+
+===== Server-Side Secrets
+
+The `secrets` section is used to provide sensitive information such as OAuth secrets.
+
+secrets.oauthSecret:: The secret key used for OAuth authentication.
+
+==== Usage
+
+To deploy a Capsium package with the additional configuration provided in `deploy.json`, include the file during the deployment process.
+
+Example deployment command:
+```bash
+capsium deploy example-package@1.0.0 --config deploy.json
+```
+
+The Capsium reactor will read the `deploy.json` file and apply the specified configurations, ensuring that the package operates according to the defined settings.
+

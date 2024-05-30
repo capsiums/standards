@@ -1,0 +1,197 @@
+== Composite Packages
+
+Composite packages in Capsium allow for the bundling of multiple Capsium packages into a single, cohesive unit. This provides an organized and efficient way to manage dependencies, resources, and configurations.
+
+=== Structure (Composite Package of Multiple Capsium Packages)
+
+A composite package is a structured collection of multiple Capsium packages, each contributing its own functionality and resources. The structure typically includes:
+  * A manifest file (`manifest.json`) that outlines the composite package's metadata and dependencies.
+  * A `packages` directory containing the individual Capsium packages.
+  * Configuration files for resource routing and storage management.
+
+Example `manifest.json`:
+[source,json]
+----
+{
+  "name": "composite-package-example",
+  "version": "1.0.0",
+  "description": "A composite package consisting of multiple Capsium packages.",
+  "packages": [
+    "package1",
+    "package2",
+    "package3"
+  ]
+}
+----
+
+Directory structure:
+```
+composite-package/
+├── manifest.json
+├── packages/
+│   ├── package1/
+│   ├── package2/
+│   └── package3/
+├── routes.json
+└── storage.json
+```
+
+=== Specifying Dependencies in Metadata
+
+Dependencies between Capsium packages within a composite package are specified in the `manifest.json` file. This includes defining which packages are required and any specific versions or constraints.
+
+Example `manifest.json` with dependencies:
+[source,json]
+----
+{
+  "name": "composite-package-example",
+  "version": "1.0.0",
+  "description": "A composite package consisting of multiple Capsium packages.",
+  "packages": [
+    "package1",
+    "package2",
+    "package3"
+  ],
+  "dependencies": {
+    "package1": ">=1.0.0",
+    "package2": "^2.0.0",
+    "package3": "3.x"
+  }
+}
+----
+
+=== Resource Routing
+
+Resource routing in a composite package involves defining how HTTP routes and data routes are managed and potentially remapped to avoid conflicts and ensure proper integration.
+
+==== Remapping Included HTTP Routes
+
+When combining multiple packages, HTTP routes may need to be remapped to avoid conflicts or to better organize the API endpoints. This is done in the `routes.json` file.
+
+Example `routes.json` with remapping:
+[source,json]
+----
+{
+  "routes": [
+    {
+      "originalRoute": "/api/v1/package1/",
+      "remappedRoute": "/api/v1/composite/package1/"
+    },
+    {
+      "originalRoute": "/api/v1/package2/",
+      "remappedRoute": "/api/v1/composite/package2/"
+    }
+  ]
+}
+----
+
+==== Remapping Included Data Routes
+
+Similar to HTTP routes, data routes may also need to be remapped to ensure data sources are correctly referenced and do not conflict.
+
+Example `routes.json` with data route remapping:
+[source,json]
+----
+{
+  "dataRoutes": [
+    {
+      "originalRoute": "/api/v1/data/package1/",
+      "remappedRoute": "/api/v1/data/composite/package1/"
+    },
+    {
+      "originalRoute": "/api/v1/data/package2/",
+      "remappedRoute": "/api/v1/data/composite/package2/"
+    }
+  ]
+}
+----
+
+=== Storage
+
+Storage configurations in a composite package involve managing and potentially customizing which layers from included packages are activated or deactivated.
+
+==== Selecting Inherited Layers to Activate / Deactivate
+
+Inherited layers from individual packages can be selectively activated or deactivated based on the needs of the composite package. This is specified in the `storage.json` file.
+
+Example `storage.json`:
+[source,json]
+----
+{
+  "storage": {
+    "activeLayers": [
+      "package1.layer1",
+      "package2.layer2"
+    ],
+    "inactiveLayers": [
+      "package3.layer3"
+    ]
+  }
+}
+----
+
+=== Security, Digital Signatures, and Integrity Checks
+
+Ensuring the security and integrity of a composite package involves the use of digital signatures and integrity checks. Each package within the composite package should have its own digital signature, and the composite package itself should also be signed.
+
+Digital Signatures:: Each package and the composite package should be signed using a cryptographic key to ensure authenticity.
+Integrity Checks:: Hashes (e.g., SHA-256) should be used to verify that the package contents have not been tampered with.
+
+Example `manifest.json` with signatures and hashes:
+[source,json]
+----
+{
+  "name": "composite-package-example",
+  "version": "1.0.0",
+  "description": "A composite package consisting of multiple Capsium packages.",
+  "packages": [
+    {
+      "name": "package1",
+      "version": "1.0.0",
+      "hash": "sha256-abcdef1234567890...",
+      "signature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+    },
+    {
+      "name": "package2",
+      "version": "2.1.0",
+      "hash": "sha256-12345abcdef67890...",
+      "signature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+    }
+  ],
+  "compositeSignature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+}
+----
+
+=== User Authentication
+
+User authentication in a composite package ensures that only authorized users can access the resources and data provided by the included packages. This is typically managed via an authentication service that supports various authentication methods such as OAuth, JWT, or API keys.
+
+OAuth:: Use OAuth 2.0 for user authentication, allowing users to log in using their existing credentials from an OAuth provider (e.g., Google, Facebook).
+JWT:: Implement JSON Web Tokens (JWT) for stateless authentication. Tokens are issued upon successful login and are included in subsequent requests to verify user identity.
+API Keys:: Use API keys for application-level access control. API keys are issued to applications and are included in API requests for authentication.
+
+Example `auth.json` configuration:
+[source,json]
+----
+{
+  "authentication": {
+    "methods": ["OAuth", "JWT", "APIKey"],
+    "OAuth": {
+      "provider": "https://oauth.example.com",
+      "clientId": "your-client-id",
+      "clientSecret": "your-client-secret"
+    },
+    "JWT": {
+      "secret": "your-jwt-secret",
+      "issuer": "your-issuer",
+      "audience": "your-audience"
+    },
+    "APIKey": {
+      "headerName": "X-API-Key",
+      "validKeys": ["key1", "key2", "key3"]
+    }
+  }
+}
+----
+
+By configuring these options, a composite package can ensure robust security and proper access control across all included packages. This structured approach helps maintain the integrity of the composite package while providing a seamless experience for end-users.

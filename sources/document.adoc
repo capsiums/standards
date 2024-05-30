@@ -1,0 +1,52 @@
+= Common architecture for portable secure information interchange and unified management (Capsium)
+:docnumber: 62001
+:copyright-year: 2024
+:language: en
+:doctype: standard
+:edition: 1
+:status: working-draft
+:revdate: 2024-05-27
+:published-date: 2024-05-27
+:script: Latn
+:technical-committee: VCARD
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:mn-document-class: cc
+:mn-output-extensions: xml,html,pdf,rxl
+:local-cache-only:
+:data-uri-image:
+
+
+
+include::sections/00-abstract.adoc[]
+
+include::sections/00-introduction.adoc[]
+
+include::sections/01-scope.adoc[]
+
+include::sections/02-normrefs.adoc[]
+
+include::sections/03-terms.adoc[]
+
+include::sections/04-framework.adoc[]
+
+include::sections/05-package.adoc[]
+
+include::sections/06-composite.adoc[]
+
+include::sections/07-reactor.adoc[]
+
+include::sections/08-management.adoc[]
+
+include::sections/09-compliance.adoc[]
+
+include::sections/91-ruby-packager.adoc[]
+
+include::sections/92-ruby-reactor.adoc[]
+
+include::sections/93-apache-reactor.adoc[]
+
+include::sections/94-nginx-reactor.adoc[]
+
+include::sections/99-bibliography.adoc[]
