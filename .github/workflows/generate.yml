@@ -32,7 +32,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           agree-to-terms: true
-          destination: artifact
+          destination: gh-pages
   deploy:
     environment:
       name: github-pages
