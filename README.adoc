@@ -7,3 +7,5 @@
 * Information Interchange and
 * Unified
 * Management
+
+The specification is deployed to https://standards.capsium.org.
