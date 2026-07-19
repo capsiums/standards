@@ -1,0 +1,22 @@
+[bibliography]
+== Bibliography
+
+* [[[RFC6749,IETF RFC 6749]]]
+
+* [[[RFC7636,IETF RFC 7636]]]
+
+* [[[RFC4648,IETF RFC 4648]]]
+
+* [[[RFC6838,IETF RFC 6838]]]
+
+* [[[RFC8259,IETF RFC 8259]]]
+
+* [[[RFC3986,IETF RFC 3986]]]
+
+* [[[jsonschema,JSON Schema 2020-12]]], _JSON Schema: A Media Type for Describing JSON Documents_. JSON Schema Working Group. https://json-schema.org/draft/2020-12/json-schema-core
+
+* [[[htpasswd,Apache htpasswd]]], _htpasswd -- Manage user files for basic authentication_. The Apache Software Foundation. https://httpd.apache.org/docs/current/programs/htpasswd.html
+
+* [[[OCI,OCI image-spec]]], _Open Container Initiative Image Format Specification_. Open Container Initiative. https://github.com/opencontainers/image-spec
+
+* [[[wpack,W3C Web Bundles]]], _Web Bundles_ (W3C draft). W3C Web Packaging Working Group. https://w3c.github.io/webpackage/draft-yasskin-wpack-bundled-exchanges.html
