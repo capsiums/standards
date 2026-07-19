@@ -1,0 +1,93 @@
+[[modules]]
+== Capsium modules
+
+=== General
+
+The Capsium framework is partitioned into a small core and a set of optional
+modules. The core — defined by the clauses on the Capsium package, the
+Capsium reactor, and the management of Capsium packages — specifies the
+minimum that every conformant package, packager, and reactor shall
+implement: package layout, core metadata fields, the manifest, core routing
+and auto-generation, datasets, self-containment, SHA-256 integrity, zip/`.cap`
+packaging, validation, route serving, and the Monitoring HTTP API.
+
+Every additional capability is defined as a named module in a clause of its
+own. Modules are opt-in: an implementation claims exactly the modules it
+supports, à la carte, and each module carries its own additional requirements
+and its own conformance class (<<compliance>>), so that conformance to each
+capability can be tested independently.
+
+=== Module identification
+
+Each module is identified by a lowercase kebab-case string, its module
+identifier. The module identifier names the module's clause
+(`Module: <Name>`), its anchor, and its conformance class. This document
+defines the following modules:
+
+.Modules defined by this document
+[cols="1,2,3,2,1", options="header"]
+|===
+| Identifier | Name | Summary | Conformance class | Clause
+
+| `signatures`
+| Digital signatures
+| RSA-SHA256 signing and verification of packages (X.509 or OpenPGP)
+| Capsium signatures
+| <<module-signatures>>
+
+| `encryption`
+| Encryption
+| AES-256-GCM package encryption and DEK/OpenPGP encrypted content
+| Capsium encryption
+| <<module-encryption>>
+
+| `layered-storage`
+| Layered storage
+| Overlay layers with a unified view, tombstones, and layer visibility
+| Capsium layered-storage
+| <<module-layered-storage>>
+
+| `composite`
+| Composite packages
+| Dependencies, store resolution, and route inheritance across packages
+| Capsium composite
+| <<module-composite>>
+
+| `authentication`
+| User authentication
+| Apache `passwd` and OAuth authentication, route access control
+| Capsium authentication
+| <<module-authentication>>
+
+| `handler-routes`
+| Handler routes
+| HTTP API routes that bind a method and path to an executable handler
+| Capsium handler-routes
+| <<module-handler-routes>>
+
+| `testing`
+| Testing
+| The YAML test DSL for routes, files, data, and configuration
+| Capsium testing
+| <<module-testing>>
+|===
+
+=== Claiming modules
+
+A package, packager, or reactor that claims a module shall satisfy all of the
+numbered additional requirements of that module's clause, in addition to the
+requirements of the core. Claiming a module is all-or-nothing: partial
+support of a module's requirements does not constitute a claim.
+
+A Capsium package may declare the modules it claims in `metadata.json` with
+the optional `modules` key (Clause 5, Metadata file), whose value is an array
+of module identifiers:
+
+[source,json]
+----
+{
+    "name": "example-capsium-package",
+    "version": "1.0.0",
+    "modules": ["signatures", "layered-storage"]
+}
+----

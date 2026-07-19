@@ -20,7 +20,8 @@
         "other-package.capsium": ">=1.0.0"
     },
     "license": "path/to/LICENSE.spdx",
-    "readOnly": true
+    "readOnly": true,
+    "modules": ["signatures", "layered-storage"]
 }
 ----
 
@@ -86,6 +87,19 @@ Type::: `boolean`
 Description::: Specifies if the package is immutable.
 Value Requirements::: Must be set to `true` to activate immutability.
 Example:::
+
+11. **`modules`** (optional)
+Description::: A list of Capsium modules (<<modules>>) that the package claims
+conformance to or requires.
+Requirements:::
+*** Should be an array of strings.
+*** Each string should be the identifier of a module defined in <<modules>>
+(e.g., `signatures`, `layered-storage`).
+Example:::
+[source,json]
+----
+"modules": ["signatures", "layered-storage"]
+----
 
 NOTE: The `name`, `version`, `guid`, and `uuid` attributes are critical for the unique identification of the package.
 
@@ -240,6 +254,7 @@ Build metadata::: Indicated by appending a plus sign and a series of dot-separat
 ** `2.0.0-beta+exp.sha.5114f85`: A beta release with experimental build metadata.
 
 
+[[metadata-dependencies]]
 ==== Dependencies
 
 ===== General
@@ -249,7 +264,9 @@ file. Each dependency is listed with a name and a version requirement.
 
 The `dependencies` section in the `metadata.json` file specifies other packages
 that the Capsium package depends on. This section ensures that all necessary
-packages are available for the package to function correctly.
+packages are available for the package to function correctly. Dependency
+resolution and the bundling of dependent packages into composite packages are
+defined by the composite packages module (<<module-composite>>).
 
 Here is an example:
 
@@ -505,9 +522,10 @@ Ensure this SPDX license file is referenced in the `manifest.json`:
 ----
 
 
+[[metadata-readonly]]
 ==== Read-only
 
-Capsium packages can be configured as immutable, ensuring that their content cannot be modified after creation.
+Capsium packages can be configured as immutable, ensuring that their content cannot be modified after creation. Composite packages layer changes on top of immutable base packages (<<module-composite>>).
 
 This section details the requirements, specifications, and use cases for configuring a package as read-only, including value requirements and enumerations for attributes. The read-only attribute is package-wide and set inside `metadata.json`.
 

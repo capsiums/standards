@@ -1,4 +1,38 @@
-=== User authentication
+[[module-authentication]]
+== Module: User authentication
+
+The authentication module secures access to the resources and datasets of an
+activated Capsium package. It covers user authentication methods — Apache
+`passwd` (`.htpasswd`) basic authentication and external OAuth — and the
+per-route access control declarations that restrict dataset routes to
+authenticated users with the required roles.
+
+Authentication is optional: a conformant core package and reactor serve
+routes without it. A package, packager, or reactor that claims the
+`authentication` module shall satisfy the additional requirements of this
+clause.
+
+=== Additional requirements
+
+. Each user shall have a unique user ID and a strong password; password
+policies should enforce a minimum length of 8 characters with at least one
+uppercase letter, one lowercase letter, one digit, and one special character.
+. Account lockout should be implemented after a specified number of failed
+login attempts (e.g., 5 attempts), and sessions should be managed securely
+with timeout and automatic logout after a period of inactivity.
+. All authentication data should be encrypted during transmission and
+storage.
+. For Apache `passwd` authentication, the `.htpasswd` file shall be securely
+stored and accessible only to the web server, and passwords should be hashed
+using a secure algorithm (e.g., bcrypt).
+. For OAuth, the client secret shall be kept protected from users who can
+extract the package: it shall be stored in a secure environment variable or a
+secure server-side configuration file, not within the package itself.
+. Dataset routes may declare `accessControl` with `roles` and
+`authenticationRequired`; a reactor claiming this module shall enforce those
+declarations on the affected routes.
+
+=== Authentication methods
 
 ==== General
 
@@ -138,9 +172,82 @@ Here is a combined configuration example that includes general requirements, Apa
 }
 ```
 
-general::: Specifies general authentication requirements,
 general::: Specifies general authentication requirements, including password policy, account lockout, session management, and encryption.
 apache::: Details Apache authentication configuration, including the path to the `.htpasswd` file and the encryption algorithm used for passwords.
 oauth::: Configures external authentication via OAuth, including the OAuth provider, client ID, client secret (referenced from an environment variable), redirect URI, scope, and state secret.
 
 This comprehensive configuration ensures that user authentication is secure, flexible, and compliant with best practices, while also protecting sensitive information such as the OAuth secret from being exposed.
+
+=== Dataset route access control
+
+Dataset routes (<<dataset-routes>>) may carry access control configurations to
+manage who can access the data and under what conditions. Access control is
+declared per route in `routes.json` with the `accessControl` key.
+
+Example of `routes.json`:
+
+[source,json]
+----
+{
+    "routes": [
+        {
+            "route": "/api/v1/data/users",
+            "dataset": "users",
+            "accessControl": {
+                "roles": ["admin", "user"],
+                "authenticationRequired": true
+            }
+        },
+        {
+            "route": "/api/v1/data/products",
+            "dataset": "products",
+            "accessControl": {
+                "roles": ["admin"],
+                "authenticationRequired": true
+            }
+        },
+        {
+            "route": "/api/v1/data/sales",
+            "dataset": "sales",
+            "accessControl": {
+                "roles": ["admin"],
+                "authenticationRequired": true
+            }
+        }
+    ]
+}
+----
+
+In this example, `routes.json` defines three routes, each pointing to a data set specified in `storage.json`:
+
+Users data set::
+  * Route: `/api/v1/data/users`
+  * Dataset: `users` (refers to the `users` key in `storage.json`)
+  * Access control: Only accessible by users with `admin` or `user` roles, and authentication is required.
+
+Products data set::
+  * Route: `/api/v1/data/products`
+  * Dataset: `products` (refers to the `products` key in `storage.json`)
+  * Access control: Only accessible by users with the `admin` role, and authentication is required.
+
+Sales data set::
+  * Route: `/api/v1/data/sales`
+  * Dataset: `sales` (refers to the `sales` key in `storage.json`)
+  * Access control: Only accessible by users with the `admin` role, and authentication is required.
+
+.Access Control Attributes
+[cols="2,4", options="header"]
+|===
+| Attribute            | Description
+| Roles                | Specifies the roles that are allowed to access the data set.
+| Authentication required | Specifies whether authentication is required to access the data set.
+|===
+
+Access control ensures that data can be securely and efficiently retrieved by
+authorized users.
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `authentication`
+SHALL satisfy requirements authentication-1 to authentication-6 of this
+clause. The conformance class is defined in <<conformance-authentication>>.

@@ -1,3 +1,4 @@
+[[compliance]]
 == Compliance
 
 This clause defines the conformance classes of the Capsium framework and the
@@ -8,21 +9,32 @@ are given.
 
 === General
 
-Three conformance classes are defined:
+Two kinds of conformance classes are defined.
 
-Conformant Capsium Package:: A `.cap` artifact that satisfies the package
-requirements of Clause 5.
-Conformant Packager:: Software that produces Conformant Capsium Packages.
-Conformant Reactor:: Software that activates and serves Conformant Capsium
-Packages as specified in Clause 7.
+Core conformance classes — every conformant implementation belongs to one of
+these:
+
+Core Package:: A `.cap` artifact that satisfies the core package requirements
+of Clause 5.
+Core Packager:: Software that produces Core Packages.
+Core Reactor:: Software that activates and serves Core Packages as specified
+in <<reactor-clause>>.
+
+Module conformance classes — one per Capsium module defined in <<modules>>:
+Capsium signatures, Capsium encryption, Capsium layered-storage, Capsium
+composite, Capsium authentication, Capsium handler-routes, and Capsium
+testing. Module classes are claimed à la carte; an artifact or implementation
+claiming a module class shall satisfy every numbered additional requirement
+of the corresponding module clause, in addition to its core class
+requirements.
 
 Informative examples of implementations of these classes are given in Annexes
 A to D.
 
-=== Conformant Capsium Package
+=== Core Package
 
-A Capsium package conforms to this document when all of the following
-statements are true:
+A Capsium package conforms to the Core Package class when all of the
+following statements are true:
 
 . The package is distributed as a single compressed file with the `.cap`
 extension and the MIME type `application/vnd.capsium.package` (Clause 5,
@@ -38,6 +50,10 @@ present, and in which:
 .. `version` follows Semantic Versioning;
 .. `guid` is a URI;
 .. `uuid` is a valid UUID.
+. When the package declares claimed modules in `metadata.json`, every value
+of the `modules` key is the identifier of a module defined in <<modules>>,
+and the package satisfies the package-side requirements of each claimed
+module.
 . Dependencies, when declared, are expressed in `metadata.json` as an object
 mapping the GUID of each required package to a semantic version range
 (Clause 5, Dependencies).
@@ -61,13 +77,13 @@ file (Clause 5, Security).
 . The package is self-contained: served content does not depend on external
 resources to function (Clause 4, Principles; Clause 5, Validation).
 
-=== Conformant Packager
+=== Core Packager
 
-A packager conforms to this document when all of the following statements are
-true:
+A packager conforms to the Core Packager class when all of the following
+statements are true:
 
-. The packager produces packages that satisfy every statement of the
-Conformant Capsium Package class.
+. The packager produces packages that satisfy every statement of the Core
+Package class.
 . When `manifest.json` is absent from the package directory, the packager
 generates it from the package content according to Clause 5 (Manifest file).
 . When `routes.json` is absent from the package directory, the packager
@@ -76,31 +92,33 @@ generates it from the manifest according to Clause 5 (Resource routing).
 checksum for every file in the package except `security.json` itself
 (Clause 5, Security).
 . The packager names the built artifact `{name}-{version}.cap`, taking `name`
-and `version` from `metadata.json` (Clause 8, Building a package).
+and `version` from `metadata.json` (<<management-clause>>, Building a
+package).
 . When extracting a `.cap` file, the packager rejects archive entries whose
-paths would escape the destination directory (Clause 8, Building a package).
+paths would escape the destination directory (<<management-clause>>, Building
+a package).
 . The packager should offer validation of a package directory or `.cap` file
-against the Conformant Capsium Package statements, reporting per check and
-signalling failure when any check fails (Clause 8, Validation).
+against the Core Package statements, reporting per check and
+signalling failure when any check fails (<<management-clause>>, Validation).
 
-=== Conformant Reactor
+=== Core Reactor
 
-A reactor conforms to this document when all of the following statements are
-true:
+A reactor conforms to the Core Reactor class when all of the following
+statements are true:
 
 . The reactor activates a package from a `.cap` file or package directory and
 serves every route defined by the package's `routes.json` as specified in
-Clause 7, including dataset routes under `/api/v1/data/` and the package index
-route.
+<<reactor-clause>>, including dataset routes under `/api/v1/data/` and the
+package index route.
 . Static resources are served with the MIME types recorded in
 `manifest.json`.
 . When `security.json` is present in a package, the reactor verifies the
 package content against the listed SHA-256 checksums on activation (Clause 5,
-Security; Clause 8, Deployment and activation).
+Security; <<management-clause>>, Deployment and activation).
 . The reactor rejects a package that fails integrity verification and does not
 serve its content (Clause 5, Security).
-. The reactor exposes the Monitoring HTTP API of Clause 7, answering GET
-requests under `/api/v1/introspect` for each activated package:
+. The reactor exposes the Monitoring HTTP API of <<reactor-clause>>, answering
+GET requests under `/api/v1/introspect` for each activated package:
 .. `/api/v1/introspect/metadata` returning package metadata;
 .. `/api/v1/introspect/routes` returning served routes;
 .. `/api/v1/introspect/content-hashes` returning content hashes;
@@ -109,14 +127,135 @@ outcome.
 . Requests to routes or endpoints with an unsupported HTTP method are answered
 with an appropriate HTTP error status.
 
-A Conformant Reactor may additionally implement the following optional
-capabilities; their absence does not affect conformance:
+A Core Reactor may additionally claim any of the module conformance classes
+below; their absence does not affect core conformance. A reactor that does
+not claim the Capsium handler-routes class should answer requests to handler
+routes with `501 Not Implemented`.
 
-* layered storage (Clause 5, Storage);
-* user authentication, including Apache `passwd` (`.htpasswd`) and external
-OAuth as defined by packages (Clause 5, User authentication; Clause 7);
-* decryption of encrypted package content (Clause 5, Encrypted information;
-Clause 7);
-* activation of composite packages (Clause 6);
-* serving routes that invoke dynamic handlers, answering `501 Not Implemented`
-for handler routes it does not execute.
+[[conformance-signatures]]
+=== Capsium signatures
+
+An artifact or implementation conforms to the Capsium signatures class when
+all of the following statements are true (<<module-signatures>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. The package carries a digital signature in a signature file inside the
+package, calculated over the combined data of `metadata.json`,
+`signature.json` (with the `signature` key empty), and `package.enc`
+(signatures-1, signatures-2).
+. The signature uses RSA with SHA-256 and a key of at least 2048 bits,
+represented by an X.509 certificate or an OpenPGP key (signatures-3,
+signatures-4).
+. A packager claiming this class produces the signature and records it as
+specified; a reactor claiming this class verifies the signature with the
+public key and should reject a package whose signature does not verify
+(signatures-5, signatures-6).
+
+[[conformance-encryption]]
+=== Capsium encryption
+
+An artifact or implementation conforms to the Capsium encryption class when
+all of the following statements are true (<<module-encryption>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. Package encryption uses AES-256 in GCM mode, the encrypted package file
+carries the `.enc` extension, and `metadata.json` and `signature.json` remain
+unencrypted (encryption-1, encryption-2).
+. Encryption keys are distributed and stored securely, and any data
+encryption key (DEK) is encrypted with the recipient's public key
+(encryption-3, encryption-5).
+. Individually encrypted files are declared in the `encryption` configuration
+with `file`, `encryptedWith`, and `algorithm` values from the defined
+enumerations (encryption-4).
+. Routes serving encrypted files indicate the required decryption method, and
+the manifest lists the encryption details of encrypted files (encryption-6).
+
+[[conformance-layered-storage]]
+=== Capsium layered-storage
+
+An artifact or implementation conforms to the Capsium layered-storage class
+when all of the following statements are true (<<module-layered-storage>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. Multiple ordered read-only or writable layers are supported and merged into
+a single filesystem view in which the topmost layer takes precedence
+(layered-storage-1, layered-storage-2).
+. Changes are written to the topmost writable layer, and deletions mark files
+as deleted without removing them from lower layers (layered-storage-3).
+. Layers are configured with `path`, `writable`, and `visibility`
+(`exported` / `private`) (layered-storage-4, layered-storage-5).
+
+[[conformance-composite]]
+=== Capsium composite
+
+An artifact or implementation conforms to the Capsium composite class when
+all of the following statements are true (<<module-composite>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. A composite package bundles the included packages under a `packages`
+directory with a manifest recording its dependencies (composite-1,
+composite-2).
+. Routes of included packages are remapped to avoid conflicts, and inherited
+layers are selectively activated or deactivated (composite-3, composite-4).
+. Route inheritance declares the originating package and route, honours
+`exported` visibility, and supports remapping, response rewriting, header
+enhancement, and request header supplanting (composite-5, composite-6).
+. Each included package and the composite package itself carry integrity
+hashes and should be signed (composite-7).
+
+[[conformance-authentication]]
+=== Capsium authentication
+
+An artifact or implementation conforms to the Capsium authentication class
+when all of the following statements are true (<<module-authentication>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. User credentials, password policy, account lockout, and session management
+follow the module's requirements, and authentication data is encrypted in
+transmission and storage (authentication-1, authentication-2,
+authentication-3).
+. `.htpasswd` files are stored securely outside the served content with
+securely hashed passwords (authentication-4).
+. OAuth client secrets are kept outside the package, in environment variables
+or server-side configuration (authentication-5).
+. A reactor claiming this class enforces `accessControl` declarations
+(`roles`, `authenticationRequired`) on dataset routes (authentication-6).
+
+[[conformance-handler-routes]]
+=== Capsium handler-routes
+
+An artifact or implementation conforms to the Capsium handler-routes class
+when all of the following statements are true (<<module-handler-routes>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. Handler routes declare `path`, `method`, and a `handler` resolving to a
+file in the package (handler-routes-1, handler-routes-2).
+. A reactor claiming this class executes the handler of a matching route and
+answers unsupported methods with an appropriate HTTP error status
+(handler-routes-3, handler-routes-4).
+. Declared header responses are applied to handler responses, and reactors
+not claiming this class answer handler routes with `501 Not Implemented`
+(handler-routes-5, handler-routes-6).
+
+[[conformance-testing]]
+=== Capsium testing
+
+An artifact or implementation conforms to the Capsium testing class when all
+of the following statements are true (<<module-testing>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. Test files follow the YAML DSL: a top-level `tests` list whose entries
+declare `name` and `type` (testing-1).
+. Each test declares the attributes required for its type: `route` tests
+`url` and `expected_status`; `file` tests `path`; `data_validation` tests
+`format`, `data_file`, and `schema_file`; `config` tests `format` and
+`config_file` (testing-2 to testing-5).
+. A test runner claiming this class correctly interprets and executes the
+tests of all four types (testing-6).

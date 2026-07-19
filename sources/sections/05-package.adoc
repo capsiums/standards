@@ -36,11 +36,7 @@ include::05x-security.adoc[]
 
 include::05x-validation.adoc[]
 
-include::05x-testing.adoc[]
-
 include::05x-packaging.adoc[]
-
-include::05x-authentication.adoc[]
 
 
 

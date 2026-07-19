@@ -135,13 +135,13 @@ auto-generated from `manifest.json` per the routing rules of Clause 5:
 
 Package routes are GET-only: other methods receive `405` with
 `Allow: GET, HEAD`; HEAD is served like GET without a body. Dynamic `handler`
-routes are accepted by the parser but answered with `501 Not Implemented`.
+routes (<<module-handler-routes>>) are accepted by the parser but answered with `501 Not Implemented`.
 Dataset sources are served as JSON — `.json` served as-is, `.csv` converted to
 JSON objects; YAML and SQLite datasets are not supported by this reactor.
 
 === Introspection API
 
-The reactor answers the Monitoring HTTP API (Clause 7), GET only:
+The reactor answers the Monitoring HTTP API (<<reactor-clause>>), GET only:
 
 `/api/v1/introspect/metadata`::: `{packages: [{name, version, author,
 description}]}`

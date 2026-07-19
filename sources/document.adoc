@@ -33,7 +33,21 @@ include::sections/04-framework.adoc[]
 
 include::sections/05-package.adoc[]
 
-include::sections/06-composite.adoc[]
+include::sections/06-modules.adoc[]
+
+include::sections/m-signatures.adoc[]
+
+include::sections/m-encryption.adoc[]
+
+include::sections/m-layered-storage.adoc[]
+
+include::sections/m-composite.adoc[]
+
+include::sections/m-authentication.adoc[]
+
+include::sections/m-handler-routes.adoc[]
+
+include::sections/m-testing.adoc[]
 
 include::sections/07-reactor.adoc[]
 

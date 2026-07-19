@@ -4,7 +4,7 @@
 The `capsium` Ruby gem (Annex A) ships a built-in reactor,
 `Capsium::Reactor`, implemented on WEBrick. It activates a single package
 from a local `.cap` file or package directory and serves its routes over
-HTTP, together with the Monitoring HTTP API of Clause 7. Serving directly
+HTTP, together with the Monitoring HTTP API of <<reactor-clause>>. Serving directly
 from a URL is not supported.
 
 === Starting the reactor
@@ -31,7 +31,8 @@ the file is missing on disk;
 * a dataset route (`{path, dataset}`) serves the dataset from `storage.json`
 as `application/json` under its `/api/v1/data/<id>` mount, and a `404` when
 the dataset is unknown;
-* any other route kind, including dynamic handler routes, is answered
+* any other route kind, including dynamic handler routes
+(<<module-handler-routes>>), is answered
 `501 Not Implemented`.
 
 Unless a route declares its own headers, resource responses carry
@@ -47,7 +48,7 @@ checksum before anything is served; a mismatch raises
 
 === Introspection endpoints
 
-While serving, the reactor answers the Monitoring HTTP API (Clause 7) as
+While serving, the reactor answers the Monitoring HTTP API (<<reactor-clause>>) as
 `application/json`. The endpoints are GET-only; other methods are answered
 `405 Method Not Allowed`.
 
@@ -60,7 +61,7 @@ GET /api/v1/introspect/content-validity # => {"contentValidity": [{"package", "v
 ----
 
 `metadata`:: wraps the served package's `name`, `version`, `author`, and
-`description` in the `packages` list shape of Clause 7.
+`description` in the `packages` list shape of <<reactor-clause>>.
 `routes`:: lists every served route with its HTTP method (defaulting to
 `GET`) and path.
 `content-hashes`:: reports the SHA-256 of the `.cap` blob when the package was

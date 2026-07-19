@@ -3,7 +3,7 @@
 
 No Apache httpd implementation of a Capsium reactor exists at the time of
 writing. This annex provides guidance for realizing one, mapping the reactor
-responsibilities of Clause 7 onto standard Apache httpd modules. Because a
+responsibilities of <<reactor-clause>> onto standard Apache httpd modules. Because a
 Capsium package is static by design (Clause 4), most of the serving behavior
 can be expressed in declarative httpd configuration; only integrity
 verification and the Monitoring HTTP API require external tooling or a dynamic
@@ -24,7 +24,7 @@ unzip /srv/capsium/packages/example-package-1.0.0.cap
 
 Extraction should reject archive entries whose paths would escape the
 destination directory (absolute paths, `..` segments), as required of
-packagers in Clause 8. After extraction, the served content tree is available
+packagers in <<management-clause>>. After extraction, the served content tree is available
 at the docroot and the configuration files (`metadata.json`, `manifest.json`,
 `routes.json`, `security.json`) are available for deriving the site
 configuration.
@@ -76,7 +76,7 @@ AddType text/javascript .js
 
 === Cache-Control via mod_headers
 
-Clause 7-compliant reactors serve static resources with a long-lived
+Reactors conforming to <<reactor-clause>> serve static resources with a long-lived
 `Cache-Control` policy by default. With `mod_headers`:
 
 [source,apache]
@@ -91,8 +91,8 @@ translate into more specific `Header` directives scoped by `<Location>`.
 
 === Basic authentication
 
-The Apache `passwd` authentication defined for packages (Clause 5, User
-authentication) is native httpd functionality. A package that declares
+The Apache `passwd` authentication defined for packages
+(<<module-authentication>>) is native httpd functionality. A package that declares
 `.htpasswd` basic authentication maps to:
 
 [source,apache]
@@ -107,13 +107,13 @@ authentication) is native httpd functionality. A package that declares
 
 The `.htpasswd` file is managed with the `htpasswd` utility, must be stored
 outside the served docroot, and passwords should be hashed with bcrypt
-(Clause 5, User authentication). OAuth authentication defined by a package
+(<<module-authentication>>). OAuth authentication defined by a package
 requires a dynamic backend or a module such as `mod_auth_openidc`, with the
-client secret kept outside the package as specified in Clause 5.
+client secret kept outside the package as specified in <<module-authentication>>.
 
 === Exposing the introspection API
 
-The Monitoring HTTP API (Clause 7) is dynamic and cannot be served from static
+The Monitoring HTTP API (<<reactor-clause>>) is dynamic and cannot be served from static
 files alone, because `content-validity` re-verifies the package at request
 time. Options for exposing it behind httpd include:
 
@@ -128,7 +128,7 @@ ProxyPass        "/api/v1/introspect" "http://127.0.0.1:8864/api/v1/introspect"
 ProxyPassReverse "/api/v1/introspect" "http://127.0.0.1:8864/api/v1/introspect"
 ----
 
-Whichever backend is chosen, the four endpoints of Clause 7 —
+Whichever backend is chosen, the four endpoints of <<reactor-clause>> —
 `/api/v1/introspect/metadata`, `/routes`, `/content-hashes`, and
 `/content-validity` — should answer GET requests with the JSON shapes defined
 there, and reject other methods with `405`.

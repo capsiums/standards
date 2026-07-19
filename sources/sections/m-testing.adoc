@@ -1,35 +1,30 @@
+[[module-testing]]
+== Module: Testing
 
-// == Introduction
+The testing module defines a YAML-based domain-specific language (DSL) for
+describing tests to be executed against Capsium packages. The DSL is designed
+to be programming language-independent, allowing for implementations in
+various languages, and covers HTTP routes, file existence, data validation,
+and configuration testing.
 
-=== Testing
+Testing is optional: a conformant core package is not required to carry
+tests. A package, packager, or test runner that claims the `testing` module
+shall satisfy the additional requirements of this clause.
 
-==== General
-This clause specifies the structure and options for the Capsium package
-// This document specifies the structure and options for the Capsium package
-testing YAML format. This format is used to define tests for various aspects of
-Capsium packages, including HTTP routes, file existence, data validation, and
-configuration testing.
+=== Additional requirements
 
-// == Scope
+. A Capsium test file shall consist of a top-level `tests` list, each entry
+declaring a `name` and a `type`.
+. A test of type `route` shall declare `url` and `expected_status`, and may
+declare `response_contains`.
+. A test of type `file` shall declare `path`.
+. A test of type `data_validation` shall declare `format`, `data_file`, and
+`schema_file`.
+. A test of type `config` shall declare `format` and `config_file`.
+. A test runner claiming this module shall correctly interpret and execute
+the tests of all four types defined in this clause.
 
-// This standard defines a YAML-based domain-specific language (DSL) for describing
-A YAML-based domain-specific language (DSL) for describing tests to be executed
-against Capsium packages is specified below. The DSL is designed to be
-programming language-independent, allowing for implementations in various
-languages.
-
-// == Normative References
-
-// * YAML Ain't Markup Language, Version 1.2, http://yaml.org/spec/1.2/spec.html
-// * JSON Schema, https://json-schema.org/
-// * The JSON Data Interchange Syntax, https://www.json.org/json-en.html
-
-// == Terms and Definitions
-
-// * _Capsium package_: A software package that adheres to the Capsium framework.
-// * _DSL_: Domain-Specific Language, a specialized language designed for a specific task.
-
-// == YAML Structure
+=== YAML structure
 
 The Capsium testing YAML structure consists of a list of tests, each defined
 with specific attributes depending on the type of test. The top-level structure
@@ -43,9 +38,9 @@ tests:
     ...
 ----
 
-==== Test Types and Options
+=== Test types and options
 
-==== Route Testing
+==== Route testing
 
 Route testing is used to verify the behavior of HTTP endpoints. Each route test includes the following attributes:
 
@@ -75,7 +70,7 @@ Example:
   response_contains: "Welcome"
 ----
 
-==== File Testing
+==== File testing
 
 File testing checks for the existence of required files. Each file test includes the following attributes:
 
@@ -99,7 +94,7 @@ Example:
   path: "/path/to/config.json"
 ----
 
-==== Data Validation
+==== Data validation
 
 Data validation tests validate datasets against predefined schemas. Each data validation test includes the following attributes:
 
@@ -129,7 +124,7 @@ Example:
   schema_file: "/path/to/schemafile.json"
 ----
 
-==== Configuration Testing
+==== Configuration testing
 
 Configuration testing ensures that configuration files are correctly structured and valid. Each configuration test includes the following attributes:
 
@@ -156,7 +151,7 @@ Example:
   config_file: "/path/to/config.json"
 ----
 
-== Complete Example
+=== Complete example
 
 Below is a complete example of a Capsium package testing YAML file, demonstrating various test types and their options:
 
@@ -201,8 +196,13 @@ tests:
     config_file: "/path/to/config.json"
 ----
 
-== Conformance
+=== Conformance
 
-To conform to this standard, an implementation must correctly interpret and execute the tests defined in the Capsium package testing YAML format as described in this document. Implementations may be developed in any programming language, provided they adhere to the specified structure and options.
+To conform to this module, an implementation must correctly interpret and
+execute the tests defined in the Capsium package testing YAML format as
+described in this clause. Implementations may be developed in any programming
+language, provided they adhere to the specified structure and options.
 
-
+A Capsium package / packager / test runner conforming to class `testing`
+SHALL satisfy requirements testing-1 to testing-6 of this clause. The
+conformance class is defined in <<conformance-testing>>.
