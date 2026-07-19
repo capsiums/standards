@@ -1,0 +1,122 @@
+== Compliance
+
+This clause defines the conformance classes of the Capsium framework and the
+requirements that an artifact or implementation shall satisfy to claim
+conformance to each class. Requirements are expressed as numbered, testable
+statements and reference the clauses in which the underlying specifications
+are given.
+
+=== General
+
+Three conformance classes are defined:
+
+Conformant Capsium Package:: A `.cap` artifact that satisfies the package
+requirements of Clause 5.
+Conformant Packager:: Software that produces Conformant Capsium Packages.
+Conformant Reactor:: Software that activates and serves Conformant Capsium
+Packages as specified in Clause 7.
+
+Informative examples of implementations of these classes are given in Annexes
+A to D.
+
+=== Conformant Capsium Package
+
+A Capsium package conforms to this document when all of the following
+statements are true:
+
+. The package is distributed as a single compressed file with the `.cap`
+extension and the MIME type `application/vnd.capsium.package` (Clause 5,
+General; Packaging options).
+. The package directory structure conforms to the folder hierarchy of Clause 5
+(Structure): configuration files reside at the package root, served content
+under the content directory, and paths inside configuration files are
+package-relative.
+. The package contains a `metadata.json` file (Clause 5, Metadata file) in
+which the `name`, `version`, `description`, `guid`, and `uuid` attributes are
+present, and in which:
+.. `name` is a kebab-case string;
+.. `version` follows Semantic Versioning;
+.. `guid` is a URI;
+.. `uuid` is a valid UUID.
+. Dependencies, when declared, are expressed in `metadata.json` as an object
+mapping the GUID of each required package to a semantic version range
+(Clause 5, Dependencies).
+. The package contains a `manifest.json` file, either provided or generated
+from the package content according to the generation rules of Clause 5
+(Manifest file), and every resource declared in the manifest exists in the
+package.
+. The package contains a `routes.json` file, either provided or generated from
+the manifest according to the generation rules of Clause 5 (Resource
+routing): HTML content is reachable through both its base name and its full
+file name, and other resources are routed relative to the content path.
+. Every target referenced by `routes.json` exists in the package, and dataset
+routes are mounted under `/api/v1/data/` (Clause 5, Dataset routes).
+. When the package contains datasets, `storage.json` declares each dataset
+referenced by a dataset route, and dataset data validates against its declared
+schema (Clause 5, Storage; Validation).
+. When `security.json` is present, it declares `SHA-256` as the checksum
+algorithm and lists a SHA-256 checksum for every file in the package except
+`security.json` itself, and every listed checksum matches the corresponding
+file (Clause 5, Security).
+. The package is self-contained: served content does not depend on external
+resources to function (Clause 4, Principles; Clause 5, Validation).
+
+=== Conformant Packager
+
+A packager conforms to this document when all of the following statements are
+true:
+
+. The packager produces packages that satisfy every statement of the
+Conformant Capsium Package class.
+. When `manifest.json` is absent from the package directory, the packager
+generates it from the package content according to Clause 5 (Manifest file).
+. When `routes.json` is absent from the package directory, the packager
+generates it from the manifest according to Clause 5 (Resource routing).
+. The packager writes `security.json` at packaging time, containing a SHA-256
+checksum for every file in the package except `security.json` itself
+(Clause 5, Security).
+. The packager names the built artifact `{name}-{version}.cap`, taking `name`
+and `version` from `metadata.json` (Clause 8, Building a package).
+. When extracting a `.cap` file, the packager rejects archive entries whose
+paths would escape the destination directory (Clause 8, Building a package).
+. The packager should offer validation of a package directory or `.cap` file
+against the Conformant Capsium Package statements, reporting per check and
+signalling failure when any check fails (Clause 8, Validation).
+
+=== Conformant Reactor
+
+A reactor conforms to this document when all of the following statements are
+true:
+
+. The reactor activates a package from a `.cap` file or package directory and
+serves every route defined by the package's `routes.json` as specified in
+Clause 7, including dataset routes under `/api/v1/data/` and the package index
+route.
+. Static resources are served with the MIME types recorded in
+`manifest.json`.
+. When `security.json` is present in a package, the reactor verifies the
+package content against the listed SHA-256 checksums on activation (Clause 5,
+Security; Clause 8, Deployment and activation).
+. The reactor rejects a package that fails integrity verification and does not
+serve its content (Clause 5, Security).
+. The reactor exposes the Monitoring HTTP API of Clause 7, answering GET
+requests under `/api/v1/introspect` for each activated package:
+.. `/api/v1/introspect/metadata` returning package metadata;
+.. `/api/v1/introspect/routes` returning served routes;
+.. `/api/v1/introspect/content-hashes` returning content hashes;
+.. `/api/v1/introspect/content-validity` returning the integrity verification
+outcome.
+. Requests to routes or endpoints with an unsupported HTTP method are answered
+with an appropriate HTTP error status.
+
+A Conformant Reactor may additionally implement the following optional
+capabilities; their absence does not affect conformance:
+
+* layered storage (Clause 5, Storage);
+* user authentication, including Apache `passwd` (`.htpasswd`) and external
+OAuth as defined by packages (Clause 5, User authentication; Clause 7);
+* decryption of encrypted package content (Clause 5, Encrypted information;
+Clause 7);
+* activation of composite packages (Clause 6);
+* serving routes that invoke dynamic handlers, answering `501 Not Implemented`
+for handler routes it does not execute.
