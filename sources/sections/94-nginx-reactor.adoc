@@ -1,0 +1,174 @@
+[appendix,obligation="informative"]
+== nginx (OpenResty) reactor
+
+The `capsium-lua` project (version 0.2.0, MIT licensed) is a Capsium reactor
+built on OpenResty, the Lua-enabled nginx distribution. It serves Capsium
+packages (`.cap` files) directly through nginx with Lua: a `.cap` file dropped
+into the packages directory is extracted on demand, verified against
+`security.json`, and routed, with optional per-mount configuration for paths,
+domains, headers, caching, and CORS.
+
+=== Architecture
+
+The implementation keeps a single framework-agnostic core and a thin nginx
+glue layer, with no duplicated logic:
+
+[source]
+----
+lib/capsium/                  Framework-agnostic core (the rock)
+├── utils.lua                 Pure helpers (tables, JSON files, paths)
+├── mime.lua                  MIME type detection (text/javascript per RFC 9239)
+├── csv.lua                   Minimal CSV parser (dataset support)
+├── reactor.lua               Reactor core: package management + introspection
+├── package/
+│   ├── package.lua           Package model (OOP): load/normalize/resolve
+│   ├── extractor.lua         Atomic .cap extraction (tmp dir + rename)
+│   ├── router.lua            Schema normalization + route auto-generation
+│   └── security.lua          security.json parsing + SHA-256 verification
+└── adapters/
+    ├── nginx.lua             fs/zip adapters (LuaFileSystem + lua-zip)
+    └── hash.lua              SHA-256 (resty.sha256 in OpenResty,
+                                pure-Lua fallback elsewhere)
+
+lua/capsium/                  nginx glue (only code that touches ngx)
+├── init.lua                  Entry point: wires adapters into the core,
+│                             request handling, introspection API
+└── config.lua                config.json loading + mount resolution
+----
+
+The core never references `ngx`; the glue never implements domain logic.
+Other platforms can plug in their own filesystem, zip, and hash adapters.
+
+=== Configuration
+
+Configuration is read from `$CAPSIUM_CONFIG_PATH`, else the first existing of
+`/etc/capsium/config.json`, `/etc/capsium/nginx/config.json`,
+`/var/lib/capsium/config.json`, `./config.json`. Top-level keys:
+
+`package_dir`:: Directory containing `.cap` files (default
+`/var/lib/capsium/packages`).
+`extract_dir`:: Extraction target (default `/var/lib/capsium/extracted`).
+`cache_enabled`:: Use the `capsium_cache` shared dict to cache introspection
+responses (default `true`).
+`cache_ttl`:: TTL in seconds for the shared-dict cache (default `3600`).
+`packages_config_dir`:: Optional directory with per-package `<name>.json`
+mount configs, merged with `mounts` at startup.
+`mounts`:: Array of mount entries (below).
+
+Example mount entries:
+
+[source,json]
+----
+{
+  "package_dir": "/var/lib/capsium/packages",
+  "extract_dir": "/var/lib/capsium/extracted",
+  "cache_enabled": true,
+  "cache_ttl": 3600,
+  "mounts": [
+    {
+      "package": "mn-samples-iso-0.1.0.cap",
+      "path": "/app",
+      "domain": "example.com",
+      "options": {
+        "cache_ttl": 7200,
+        "headers": {
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        }
+      }
+    },
+    {
+      "package": "api-1.0.0.cap",
+      "path": "/api",
+      "options": {
+        "cors": {
+          "allowed_origins": ["https://example.com"],
+          "allowed_methods": ["GET"],
+          "allowed_headers": ["Content-Type"],
+          "max_age": 600
+        }
+      }
+    }
+  ]
+}
+----
+
+Mount entry keys:
+
+`package`:: Package filename (`.cap` extension optional).
+`path`:: Mount path prefix (default `/capsium/<package-name>`).
+`domain`:: Virtual host. Advisory: the mount answers on all hosts, and is
+preferred for the named host when mounts overlap.
+`options.cache_ttl`:: Static `Cache-Control` max-age override for this mount
+(default `31536000`, giving `public, max-age=31536000`).
+`options.headers`:: Extra response headers applied to every response from
+this mount; an explicit `Cache-Control` here wins over `cache_ttl`.
+`options.cors`:: CORS policy: `allowed_origins` (array, `*` supported),
+`allowed_methods`, `allowed_headers`, `expose_headers`, `max_age`. Preflight
+`OPTIONS` requests are answered with `204` when CORS is configured.
+
+Every package in `package_dir` is always also available at
+`/capsium/<package-name>` without configuration; `/api/v1/introspect` is
+reserved.
+
+=== Extraction and integrity verification
+
+Packages are extracted lazily, on first request. Extraction is atomic: the
+archive unpacks into a temporary directory that is renamed into place only
+after `metadata.json` parses and, when `security.json` is present, every
+listed file's SHA-256 verifies (Clause 5, Security). A package that fails
+verification is rejected with a 5xx response carrying the reason, and nothing
+is left at the final extraction path. Archive entries containing `..` path
+segments are refused (zip-slip protection). Re-extraction happens
+automatically when the `.cap` file is newer than the extracted tree.
+
+=== Manifest-driven routing
+
+Both the canonical configuration forms of Clause 5 and the legacy gem forms
+are accepted and normalized on read. When `routes.json` is absent, routes are
+auto-generated from `manifest.json` per the routing rules of Clause 5:
+
+* `index` defaults to `content/index.html`, also routed at `/`;
+* every manifest resource under `content/` is routed relative to `content/`;
+* HTML files get dual routes, `/page` and `/page.html`;
+* every dataset gets `/api/v1/data/<id>`.
+
+Package routes are GET-only: other methods receive `405` with
+`Allow: GET, HEAD`; HEAD is served like GET without a body. Dynamic `handler`
+routes are accepted by the parser but answered with `501 Not Implemented`.
+Dataset sources are served as JSON — `.json` served as-is, `.csv` converted to
+JSON objects; YAML and SQLite datasets are not supported by this reactor.
+
+=== Introspection API
+
+The reactor answers the Monitoring HTTP API (Clause 7), GET only:
+
+`/api/v1/introspect/metadata`::: `{packages: [{name, version, author,
+description}]}`
+`/api/v1/introspect/routes`::: `{routes: [{package, routes: [{method,
+path}]}]}`
+`/api/v1/introspect/content-hashes`::: `{contentHashes: [{package, hash}]}` —
+SHA-256 of the `.cap` blob.
+`/api/v1/introspect/content-validity`::: `{contentValidity: [{package, valid,
+lastChecked, reason?}]}` — the actual integrity verification result.
+
+All introspection endpoints lazily extract and load packages on demand, so a
+freshly started reactor reports every `.cap` in `package_dir` (cold-start
+introspection). Responses are cached in the `capsium_cache` shared dict with
+the configured `cache_ttl`.
+
+=== Docker deployment
+
+The project ships a Dockerfile whose base image is pinned:
+`openresty/openresty:1.27.1.2-12-alpine-fat` (the `BASE_IMAGE` build arg).
+A typical deployment mounts the packages and configuration directories into
+the container:
+
+[source,bash]
+----
+docker build -t capsium-nginx .
+docker run -d -p 8080:80 \
+  -v $PWD/packages:/var/lib/capsium/packages \
+  -v $PWD/config:/etc/capsium \
+  capsium-nginx
+----

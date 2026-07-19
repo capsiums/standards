@@ -1,0 +1,87 @@
+[appendix,obligation="informative"]
+== Ruby reactor
+
+The `capsium` Ruby gem (Annex A) ships a built-in reactor,
+`Capsium::Reactor`, implemented on WEBrick. It activates a single package
+from a local `.cap` file or package directory and serves its routes over
+HTTP, together with the Monitoring HTTP API of Clause 7. Serving directly
+from a URL is not supported.
+
+=== Starting the reactor
+
+[source,bash]
+----
+capsium reactor serve my_package.cap [--port 8864] [--do_not_listen]
+----
+
+The default port is `8864`. While serving, the reactor watches the package
+directory with the `listen` gem and restarts the server when files change,
+so edits to a package directory are picked up without manual restarts.
+
+=== Route serving
+
+On startup the reactor mounts every route declared by the package's
+`routes.json`, plus the introspection paths, as WEBrick mount procs, and
+resolves each incoming request path against the package routes:
+
+* an unknown path is answered `404 Not Found`;
+* a resource route serves the referenced file with the MIME type recorded in
+`manifest.json` (falling back to `application/octet-stream`), and a `404` when
+the file is missing on disk;
+* a dataset route (`{path, dataset}`) serves the dataset from `storage.json`
+as `application/json` under its `/api/v1/data/<id>` mount, and a `404` when
+the dataset is unknown;
+* any other route kind, including dynamic handler routes, is answered
+`501 Not Implemented`.
+
+Unless a route declares its own headers, resource responses carry
+`Cache-Control: public, max-age=31536000` (one year), the reactor's
+configurable default.
+
+=== Integrity verification on load
+
+Loading a package that contains `security.json` verifies every listed SHA-256
+checksum before anything is served; a mismatch raises
+`Capsium::Package::Security::IntegrityError` and the package is rejected
+(Clause 5, Security).
+
+=== Introspection endpoints
+
+While serving, the reactor answers the Monitoring HTTP API (Clause 7) as
+`application/json`. The endpoints are GET-only; other methods are answered
+`405 Method Not Allowed`.
+
+[source]
+----
+GET /api/v1/introspect/metadata         # => {"packages": [{"name", "version", "author", "description"}]}
+GET /api/v1/introspect/routes           # => {"routes": [{"package", "routes": [{"method", "path"}]}]}
+GET /api/v1/introspect/content-hashes   # => {"contentHashes": [{"package", "hash"}]}
+GET /api/v1/introspect/content-validity # => {"contentValidity": [{"package", "valid", "lastChecked", "reason"?}]}
+----
+
+`metadata`:: wraps the served package's `name`, `version`, `author`, and
+`description` in the `packages` list shape of Clause 7.
+`routes`:: lists every served route with its HTTP method (defaulting to
+`GET`) and path.
+`content-hashes`:: reports the SHA-256 of the `.cap` blob when the package was
+served from one. For a directory source there is no blob, so the hash covers
+the canonical (sorted-key) JSON serialization of the package content
+checksums — the same data `security.json` integrity checks carry.
+`content-validity`:: re-verifies the package against `security.json` on every
+request and reports the outcome with a UTC `lastChecked` timestamp; `reason`
+lists the integrity errors when `valid` is `false`.
+
+Example `content-validity` response for a healthy package:
+
+[source,json]
+----
+{
+  "contentValidity": [
+    {
+      "package": "example-package",
+      "valid": true,
+      "lastChecked": "2024-05-28T12:34:56Z"
+    }
+  ]
+}
+----

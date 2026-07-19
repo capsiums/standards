@@ -1,0 +1,218 @@
+== Management of Capsium packages
+
+A Capsium package passes through a well-defined lifecycle: it is built from a
+package directory, inspected, validated, deployed and activated on a Capsium
+reactor, monitored while serving, and eventually updated or rolled back. This
+clause specifies the management operations that apply at each stage of that
+lifecycle and the behavior expected of the tools that perform them.
+
+=== General
+
+The lifecycle of a Capsium package consists of the following operations:
+
+Building:: A package directory conforming to Clause 5 is packed into a single
+`.cap` file.
+Inspecting:: The metadata, manifest, routes, and storage configuration of a
+package are examined without activating the package.
+Validation:: The package is checked against the requirements of Clause 5
+before or after distribution.
+Deployment and activation:: The package is loaded by a Capsium reactor, which
+verifies its integrity and serves its routes at a web address.
+Monitoring:: The reactor exposes the state of the activated package through
+the Monitoring HTTP API (Clause 7).
+Updating and rollback:: A new version of the package replaces a deployed one,
+or a previously deployed version is reinstated.
+Dependency resolution:: The packages required by a package, as declared in its
+metadata, are identified and made available.
+
+Management operations are performed by packagers and reactors; the command
+examples in this clause use the `capsium` command-line interface (Annex A) and
+the reactor introspection endpoints (Clause 7) to illustrate them.
+
+=== Building a package
+
+Building assembles a package directory and produces the distributable `.cap`
+file. The build process shall:
+
+. Start from a package directory whose structure conforms to Clause 5,
+containing at minimum a hand-authored `metadata.json`.
+. Generate `manifest.json` from the package content when it is absent, and
+generate `routes.json` from the manifest when it is absent, applying the
+generation rules of Clause 5.
+. Generate `security.json` containing a SHA-256 checksum for every file in the
+package except `security.json` itself (Clause 5, Security).
+. Compress the directory into a single file conforming to the packaging rules
+of Clause 5, named `{name}-{version}.cap` where `name` and `version` are taken
+from `metadata.json`.
+
+Example using the `capsium` CLI:
+
+[source,bash]
+----
+capsium package pack -f path-to-package
+# => Package created: example-package-1.0.0.cap
+----
+
+A built `.cap` file can be unpacked again for inspection or modification:
+
+[source,bash]
+----
+capsium package unpack example-package-1.0.0.cap -o example-package
+----
+
+Extraction shall reject archive entries whose paths would be written outside
+the destination directory (absolute paths, drive letters, `..` segments), so
+that unpacking an untrusted package cannot overwrite unrelated files.
+
+=== Inspecting a package
+
+Inspection exposes the configuration of a package without deploying it.
+Management tooling shall be able to report, for a package directory or a
+`.cap` file:
+
+* the metadata (`metadata.json`), including name, version, identifiers, and
+dependencies;
+* the manifest (`manifest.json`), generated when absent;
+* the routes (`routes.json`), generated when absent;
+* the storage configuration (`storage.json`) and its datasets.
+
+Example using the `capsium` CLI:
+
+[source,bash]
+----
+capsium package info     example-package-1.0.0.cap
+capsium package metadata example-package-1.0.0.cap
+capsium package manifest example-package-1.0.0.cap
+capsium package routes   example-package-1.0.0.cap
+capsium package storage  example-package-1.0.0.cap
+----
+
+=== Validation
+
+Validation determines whether a package satisfies the requirements of Clause
+5. Validation should be performed after building and before distribution, and
+may be repeated by any recipient of the package.
+
+A validation procedure shall check, and report per check, at least:
+
+metadata:: required fields are present and well-formed (kebab-case name,
+semantic version, URI `guid`, valid `uuid`);
+manifest:: every declared resource exists in the package;
+routes:: route targets exist, dataset routes are mounted under
+`/api/v1/data/`, and the index resolves to an existing HTML file;
+storage:: dataset sources and schemas exist, and dataset data validates
+against its declared schema;
+security:: when `security.json` is present, all checksums match;
+content:: packaged content does not reference external resources that would
+break self-containment.
+
+Validation shall produce a per-check report and shall signal failure (for
+example, through a non-zero process exit status) when any check fails.
+
+Example using the `capsium` CLI:
+
+[source,bash]
+----
+capsium package validate example-package-1.0.0.cap
+# => PASS metadata
+# => PASS manifest
+# => PASS routes
+# => PASS storage
+# => PASS security
+# => PASS content
+----
+
+=== Deployment and activation on a reactor
+
+Deployment delivers a `.cap` file to a Capsium reactor; activation is the
+process by which the reactor loads the package and serves its routes at a web
+address (Clause 4).
+
+On activation the reactor shall:
+
+. Accept a package from a local `.cap` file or package directory.
+. Verify the integrity of the package against `security.json` when present,
+and reject a package that fails verification (Clause 5, Security).
+. Load the package configuration, generating `manifest.json` and `routes.json`
+when absent, and mount every route defined by the package.
+. Serve the package routes as specified in Clause 7, and expose the
+Monitoring HTTP API for the activated package.
+
+An optional deployment configuration file (`deploy.json`, Clause 7) may be
+provided to tune logging, monitoring, data storage, performance, and
+server-side secrets for the deployed environment.
+
+Example using the `capsium` CLI:
+
+[source,bash]
+----
+capsium reactor serve example-package-1.0.0.cap --port 8864
+# => Starting server on http://localhost:8864
+----
+
+=== Monitoring an activated package
+
+While a package is activated, the reactor answers the Monitoring HTTP API
+(Clause 7) under `/api/v1/introspect`. Management tooling should use these
+endpoints to confirm the state of a deployment:
+
+* `GET /api/v1/introspect/metadata` — the metadata of the activated
+package(s), confirming which name and version are serving;
+* `GET /api/v1/introspect/routes` — the routes served per package;
+* `GET /api/v1/introspect/content-hashes` — the content hash per package, for
+comparison against a known-good value;
+* `GET /api/v1/introspect/content-validity` — the result of re-verifying the
+package against `security.json`, including the time of the check and the
+reason when invalid.
+
+=== Updating and rollback
+
+Capsium packages are versioned with Semantic Versioning in `metadata.json`
+(Clause 5), and the built artifact carries the version in its file name
+(`{name}-{version}.cap`). Versioning enables efficient updates and rollbacks
+(Clause 4).
+
+Updating:: An update is built as a new `.cap` file whose `version` is
+incremented according to the nature of the change (Clause 5, Versions).
+Deploying the new artifact to the reactor replaces the previously activated
+version.
+Rollback:: Because each built `.cap` is immutable and self-contained, rollback
+is performed by re-deploying the artifact of an earlier version. Management
+tooling should retain previously deployed artifacts to make rollback possible
+without rebuilding.
+
+=== Integrity verification
+
+Integrity verification protects every stage of the lifecycle after building:
+
+* At build time, `security.json` records a SHA-256 checksum for every package
+file except itself (Clause 5, Security).
+* At activation time, the reactor shall re-calculate the checksums and reject
+the package on any mismatch.
+* While serving, verification can be repeated on demand through the
+`/api/v1/introspect/content-validity` endpoint (Clause 7), which reports the
+outcome together with a check timestamp.
+
+A package whose content does not match `security.json` shall be rejected; it
+shall not be served.
+
+=== Dependency resolution
+
+A package declares its dependencies in `metadata.json` as an object mapping
+the GUID of each required package to a semantic version range (Clause 5,
+Dependencies). Dependency resolution is the process of identifying the
+required packages and versions and making them available so that the dependent
+package functions correctly.
+
+Resolution shall:
+
+. Read the `dependencies` object from the package metadata.
+. Select, for each dependency, an available package whose GUID matches and
+whose version satisfies the declared range.
+. Make the selected packages available to the deployment, either as
+individually activated packages or composed into a composite package
+(Clause 6).
+
+Management tooling should detect unresolvable dependencies — a missing GUID or
+a version range no available artifact satisfies — and report them before
+activation rather than serving a partially functional package.

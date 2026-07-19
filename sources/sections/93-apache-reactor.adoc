@@ -1,0 +1,134 @@
+[appendix,obligation="informative"]
+== Apache httpd reactor
+
+No Apache httpd implementation of a Capsium reactor exists at the time of
+writing. This annex provides guidance for realizing one, mapping the reactor
+responsibilities of Clause 7 onto standard Apache httpd modules. Because a
+Capsium package is static by design (Clause 4), most of the serving behavior
+can be expressed in declarative httpd configuration; only integrity
+verification and the Monitoring HTTP API require external tooling or a dynamic
+backend.
+
+=== Extracting the package to a docroot
+
+A `.cap` file is a ZIP archive (Clause 5, Packaging options). Deployment
+starts by extracting it into a directory that becomes (part of) the Apache
+document root:
+
+[source,bash]
+----
+mkdir -p /var/www/capsium/example-package-1.0.0
+cd /var/www/capsium/example-package-1.0.0
+unzip /srv/capsium/packages/example-package-1.0.0.cap
+----
+
+Extraction should reject archive entries whose paths would escape the
+destination directory (absolute paths, `..` segments), as required of
+packagers in Clause 8. After extraction, the served content tree is available
+at the docroot and the configuration files (`metadata.json`, `manifest.json`,
+`routes.json`, `security.json`) are available for deriving the site
+configuration.
+
+=== Integrity pre-verification at deploy time
+
+Apache httpd itself does not verify `security.json`. Integrity verification
+(Clause 5, Security) should therefore be performed at deploy time by external
+tooling, before the extracted directory is published: recalculate the SHA-256
+of every extracted file and compare it against
+`security.integrityChecks.checksums`; refuse to publish the docroot on any
+mismatch. The `capsium package validate` command (Annex A) performs exactly
+this check, as does a short script in any language with a SHA-256 library.
+
+=== Mapping routes.json to Alias and mod_rewrite
+
+Each resource route in `routes.json` maps a URL path to a package-relative
+file. Static mappings translate directly into `Alias` directives or, for rule
+shapes such as the dual HTML routes of Clause 5 (base name and full file
+name), into `mod_rewrite` rules:
+
+[source,apache]
+----
+Alias "/styles.css" "/var/www/capsium/example-package-1.0.0/content/styles.css"
+
+RewriteEngine On
+# Dual HTML routes: /page serves content/page.html
+RewriteCond "%{DOCUMENT_ROOT}/content/$1.html" -f
+RewriteRule "^/([^/]+)$" "/content/$1.html" [PT]
+----
+
+The index route of `routes.json` maps to `DirectoryIndex`. Dataset routes
+under `/api/v1/data/` (Clause 5, Dataset routes) map to the JSON rendering of
+the dataset: for file-backed datasets this can again be an `Alias` to a
+pre-generated JSON file; database-backed datasets require a small dynamic
+backend (see the introspection paragraph below).
+
+=== Serving manifest-derived MIME types
+
+`manifest.json` records the MIME type of every resource (Clause 5, Manifest
+file). httpd's own `mime.types` covers the common types; package-specific or
+unusual types recorded in the manifest can be added with `mod_mime`:
+
+[source,apache]
+----
+AddType application/vnd.capsium.package .cap
+AddType text/javascript .js
+----
+
+=== Cache-Control via mod_headers
+
+Clause 7-compliant reactors serve static resources with a long-lived
+`Cache-Control` policy by default. With `mod_headers`:
+
+[source,apache]
+----
+<Directory "/var/www/capsium/example-package-1.0.0/content">
+  Header set Cache-Control "public, max-age=31536000"
+</Directory>
+----
+
+Per-route header declarations in `routes.json` (Clause 5, Header responses)
+translate into more specific `Header` directives scoped by `<Location>`.
+
+=== Basic authentication
+
+The Apache `passwd` authentication defined for packages (Clause 5, User
+authentication) is native httpd functionality. A package that declares
+`.htpasswd` basic authentication maps to:
+
+[source,apache]
+----
+<Directory "/var/www/capsium/example-package-1.0.0/content">
+  AuthType Basic
+  AuthName "Restricted Access"
+  AuthUserFile /etc/httpd/capsium/example-package.htpasswd
+  Require valid-user
+</Directory>
+----
+
+The `.htpasswd` file is managed with the `htpasswd` utility, must be stored
+outside the served docroot, and passwords should be hashed with bcrypt
+(Clause 5, User authentication). OAuth authentication defined by a package
+requires a dynamic backend or a module such as `mod_auth_openidc`, with the
+client secret kept outside the package as specified in Clause 5.
+
+=== Exposing the introspection API
+
+The Monitoring HTTP API (Clause 7) is dynamic and cannot be served from static
+files alone, because `content-validity` re-verifies the package at request
+time. Options for exposing it behind httpd include:
+
+* a CGI or FastCGI script that reads the extracted package's configuration
+files and recomputes the verification on demand;
+* a small application server (for example the Ruby reactor of Annex B running
+alongside httpd) reverse-proxied with `mod_proxy`:
+
+[source,apache]
+----
+ProxyPass        "/api/v1/introspect" "http://127.0.0.1:8864/api/v1/introspect"
+ProxyPassReverse "/api/v1/introspect" "http://127.0.0.1:8864/api/v1/introspect"
+----
+
+Whichever backend is chosen, the four endpoints of Clause 7 —
+`/api/v1/introspect/metadata`, `/routes`, `/content-hashes`, and
+`/content-validity` — should answer GET requests with the JSON shapes defined
+there, and reject other methods with `405`.

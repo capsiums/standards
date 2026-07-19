@@ -1,0 +1,167 @@
+[appendix,obligation="informative"]
+== Ruby packager
+
+The `capsium` Ruby gem (version 0.2.0, MIT licensed, copyright Ribose) is the
+reference packager and reactor for Capsium packages. It packages a directory
+into a `.cap` file, unpacks, inspects and validates packages, and includes the
+WEBrick-based reactor described in Annex B. This annex describes the packager
+side of the gem; it requires Ruby 3.2 or later.
+
+=== Architecture
+
+The gem is organized under `lib/capsium` with autoload-only loading: the top
+level `Capsium` module declares `autoload` for every component (`Package`,
+`Packager`, `Reactor`, `Cli`, `Converters`, `ThorExt`, `VERSION`), so no
+implementation file is loaded until the corresponding constant is first
+referenced.
+
+Package domain objects are modelled with `lutaml-model`
+(`Lutaml::Model::Serializable`). Each configuration file of Clause 5 has a
+dedicated model with explicit JSON mappings:
+
+* `metadata.json` — `Capsium::Package::MetadataData` (with a nested
+`Repository` model);
+* `manifest.json` — the manifest model, keyed by package-relative resource
+path;
+* `routes.json` — the routes model (`index` plus a `routes` array);
+* `storage.json` — the storage model (`storage.dataSets`);
+* `security.json` — the security model (`security.integrityChecks`).
+
+The metadata model carries the field-level format rules of Clause 5
+(kebab-case `name`, semantic `version`, URI `guid`, UUID `uuid`) and reports
+human-readable format errors; these rules drive the `validate` command.
+
+The command-line interface is built on Thor. `Capsium::Cli` exposes three
+subcommands — `package`, `reactor`, and `convert` — implemented as Thor
+subcommand classes under `lib/capsium/cli`.
+
+Notable dependencies: `lutaml-model` (domain models), `thor` (CLI), `rubyzip`
+(`.cap` compression and extraction), `marcel` (MIME type detection when
+generating manifests), `json-schema` (dataset schema validation), `sqlite3`
+(SQLite datasets), `listen` and `webrick` (reactor, Annex B).
+
+=== Installation
+
+[source,bash]
+----
+gem install capsium
+----
+
+=== Usage
+
+==== Packing a package
+
+[source,bash]
+----
+capsium package pack [--force/-f] path-to-package
+----
+
+`pack` generates `manifest.json` and `routes.json` when absent, writes
+`security.json` with a SHA-256 checksum of every package file except
+`security.json` itself, and compresses the directory into
+`{name}-{version}.cap`, with `name` and `version` taken from `metadata.json`.
+Without `--force`, an existing target file aborts the build with
+`Capsium::Packager::FileAlreadyExistsError`.
+
+.Sample pack session
+====
+[source,bash]
+----
+$ capsium package pack -f spec/fixtures/bare-package
+Package created: bare-package-0.1.0.cap
+----
+====
+
+==== Unpacking a package
+
+[source,bash]
+----
+capsium package unpack bare-package-0.1.0.cap [-o/--output my_bare_package]
+----
+
+When `-o` is omitted, the package is unpacked into a directory named after the
+`.cap` file. Extraction is zip-slip safe: entries whose names would escape the
+destination (absolute paths, drive letters, `..` segments) are rejected with
+`Capsium::Packager::UnsafeEntryError`.
+
+==== Validating a package
+
+[source,bash]
+----
+capsium package validate path-to-package-or-cap
+----
+
+Validation runs a per-check report and exits with status 1 on any failure:
+
+* metadata: required fields present and well-formed (kebab-case name, semver
+version, URI guid, UUID);
+* manifest: every resource exists on disk;
+* routes: route targets exist; dataset routes live under `/api/v1/data/`; the
+index resolves to an existing HTML file;
+* storage: dataset sources (and schemas) exist; dataset data passes
+JSON-schema validation;
+* security: checksums match when `security.json` is present;
+* content: no external `http(s)` references in packaged content files.
+
+==== Inspecting a package
+
+[source,bash]
+----
+capsium package info     path-to-package
+capsium package metadata path-to-package
+capsium package manifest path-to-package
+capsium package routes   path-to-package
+capsium package storage  path-to-package
+----
+
+`info` prints the package path, routes, and manifest; the other commands
+pretty-print the corresponding configuration as JSON.
+
+=== Canonical and legacy schema support
+
+The gem reads both the canonical configuration forms of Clause 5 and the
+legacy (pre-0.2) gem forms, normalizing the legacy forms on read; writers emit
+only the canonical forms. For example, a legacy `dependencies` array of
+`{name, version}` objects in `metadata.json` is accepted and normalized to the
+canonical object form mapping each dependency GUID to its version range.
+
+=== security.json generation
+
+At pack time the gem generates `security.json` (Clause 5, Security) with
+`checksumAlgorithm` `SHA-256` and a `checksums` object holding the SHA-256 hex
+digest of every file in the package except `security.json` itself:
+
+[source,json]
+----
+{
+  "security": {
+    "integrityChecks": {
+      "checksumAlgorithm": "SHA-256",
+      "checksums": {
+        "content/index.html": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+        "metadata.json": "e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
+      }
+    }
+  }
+}
+----
+
+When `security.json` is present, loading a package verifies it and raises
+`Capsium::Package::Security::IntegrityError` on mismatch.
+
+=== Programmatic usage
+
+[source,ruby]
+----
+require 'capsium'
+
+package = Capsium::Package.new('example-package-1.0.0.cap')
+puts package.metadata.name
+errors = package.verify_integrity # typed errors, empty when valid
+
+packager = Capsium::Packager.new
+cap_file = packager.pack(package, force: true)
+packager.unpack(cap_file, 'output-directory')
+----
+
+The public API ships with RBS signatures in `sig/`.
