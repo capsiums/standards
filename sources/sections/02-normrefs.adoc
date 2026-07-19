@@ -1,4 +1,16 @@
-
 [bibliography]
 == Normative references
 
+* [[[ISO21320,ISO/IEC 21320-1]]]
+
+* [[[FIPS180-4,NIST FIPS PUB 180-4]]]
+
+* [[[SP800-38D,NIST SP 800-38D]]]
+
+* [[[RFC8017,IETF RFC 8017]]]
+
+* [[[RFC9110,IETF RFC 9110]]]
+
+* [[[semver,SemVer 2.0.0]]], _Semantic Versioning 2.0.0_. https://semver.org/spec/v2.0.0.html
+
+* [[[SPDX,SPDX License List]]], _SPDX License List_. Linux Foundation. https://spdx.org/licenses/
