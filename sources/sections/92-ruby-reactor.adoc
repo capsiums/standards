@@ -2,21 +2,37 @@
 == Ruby reactor
 
 The `capsium` Ruby gem (Annex A) ships a built-in reactor,
-`Capsium::Reactor`, implemented on WEBrick. It activates a single package
-from a local `.cap` file or package directory and serves its routes over
-HTTP, together with the Monitoring HTTP API of <<reactor-clause>>. Serving directly
-from a URL is not supported.
+`Capsium::Reactor`, implemented on WEBrick. It activates one or more
+packages from local `.cap` files, package directories, or `capsium://`
+registry references, and serves their routes over HTTP, together with the
+Monitoring HTTP API of <<reactor-clause>>.
 
 === Starting the reactor
 
 [source,bash]
 ----
-capsium reactor serve my_package.cap [--port 8864] [--do_not_listen]
+capsium reactor serve my_package.cap [more.cap ...] \
+    [--mount PATH=SOURCE] [--port 8864] [--store DIR] [--registry R] \
+    [--workdir DIR] [--do_not_listen]
 ----
 
 The default port is `8864`. While serving, the reactor watches the package
 directory with the `listen` gem and restarts the server when files change,
 so edits to a package directory are picked up without manual restarts.
+
+A source of the form `capsium://<guid>` is installed from the configured
+registry into the package store first and served from there
+(<<module-registries>>).
+
+=== Multiple mounted packages
+
+Several packages can be served at once, either as multiple source arguments
+or as repeatable `--mount PATH=SOURCE` mount maps (`{path, source}`,
+<<reactor-clause>>). When a mount path is not given, the first package is
+mounted at `/` and every further package at `/<metadata.name>/`; duplicate
+mount paths abort startup with `Capsium::Reactor::MountConflictError`.
+Requests are dispatched to the longest matching mount prefix, and the
+introspection endpoints aggregate all mounted packages.
 
 === Route serving
 
@@ -26,18 +42,20 @@ resolves each incoming request path against the package routes:
 
 * an unknown path is answered `404 Not Found`;
 * a resource route serves the referenced file with the MIME type recorded in
-`manifest.json` (falling back to `application/octet-stream`), and a `404` when
+`manifest.json` (falling back to content-based detection), and a `404` when
 the file is missing on disk;
 * a dataset route (`{path, dataset}`) serves the dataset from `storage.json`
-as `application/json` under its `/api/v1/data/<id>` mount, and a `404` when
-the dataset is unknown;
+as `application/json` under its `/api/v1/data/<id>` mount — JSON natively,
+YAML parsed and served as JSON — and a `404` when the dataset is unknown;
 * any other route kind, including dynamic handler routes
 (<<module-handler-routes>>), is answered
 `501 Not Implemented`.
 
 Unless a route declares its own headers, resource responses carry
 `Cache-Control: public, max-age=31536000` (one year), the reactor's
-configurable default.
+configurable default; a route's `headers` replace the default for the
+headers they declare. Method restrictions are enforced on the
+introspection, data, and write APIs as specified below.
 
 === Integrity verification on load
 
@@ -45,6 +63,44 @@ Loading a package that contains `security.json` verifies every listed SHA-256
 checksum before anything is served; a mismatch raises
 `Capsium::Package::Security::IntegrityError` and the package is rejected
 (Clause 5, Security).
+
+=== Writable packages
+
+The reactor implements the writable packages module
+(<<module-writable-packages>>) for mounts whose package is writable.
+Overlay state lives under the reactor work directory
+(`--workdir`) at `overlays/<name>/`, persists across restarts over the same
+work directory, and every write is visible on the next request.
+
+Write gate:: A package whose metadata declares `readOnly: true` answers
+every write with `403 Forbidden`.
+
+Dataset CRUD:: `POST /api/v1/data/<dataset>` creates an item (`201` +
+`Location`); `GET .../<id>`, `PUT .../<id>`, and `DELETE .../<id>` read,
+replace, and delete one item (`200` / `200` / `204`, `404` when absent).
+Malformed JSON is answered `400`, identifier conflicts `409`, schema
+violations `422` with the validation messages, unsupported methods `405`,
+and writes to SQLite datasets `501`. Items are identified by their `id`
+field, else by their 1-based index as a string.
+
+Content writes:: `PUT <path>` writes content into the overlay (creating the
+route on demand, lifting any tombstone) and `DELETE <path>` records a
+tombstone in `.capsium-tombstones`; the path resolves `404` thereafter,
+even when a lower layer holds the file.
+
+GraphQL:: A mount with at least one JSON-backed dataset exposes
+`POST|GET <mount>/graphql` with a list query field (optional `id:`
+argument) and `create<Dataset>` / `update<Dataset>` / `delete<Dataset>`
+mutations per dataset; item types derive from the dataset's JSON schema,
+falling back to a permissive `JSON` scalar. Request failures are reported
+in the GraphQL `errors` array.
+
+Save:: `POST /package/<name>/save` folds base package and overlays into a
+new `<name>-<version>.cap` with the patch version incremented: tombstones
+are applied, dataset logs replayed into the data files, and
+`manifest.json`, `routes.json`, and `security.json` regenerated. The saved
+package passes package validation and is unsigned; the response returns its
+`path`, `sha256`, `name`, and `version`.
 
 === Introspection endpoints
 
@@ -57,11 +113,12 @@ While serving, the reactor answers the Monitoring HTTP API (<<reactor-clause>>) 
 GET /api/v1/introspect/metadata         # => {"packages": [{"name", "version", "author", "description"}]}
 GET /api/v1/introspect/routes           # => {"routes": [{"package", "routes": [{"method", "path"}]}]}
 GET /api/v1/introspect/content-hashes   # => {"contentHashes": [{"package", "hash"}]}
-GET /api/v1/introspect/content-validity # => {"contentValidity": [{"package", "valid", "lastChecked", "reason"?}]}
+GET /api/v1/introspect/content-validity # => {"contentValidity": [{"package", "valid", "lastChecked", "signed", "encrypted", "signatureValid"?, "reason"?}]}
 ----
 
-`metadata`:: wraps the served package's `name`, `version`, `author`, and
-`description` in the `packages` list shape of <<reactor-clause>>.
+`metadata`:: wraps the served packages' `name`, `version`, `author`, and
+`description` in the `packages` list shape of <<reactor-clause>>, aggregating
+all mounted packages.
 `routes`:: lists every served route with its HTTP method (defaulting to
 `GET`) and path.
 `content-hashes`:: reports the SHA-256 of the `.cap` blob when the package was
@@ -70,7 +127,8 @@ the canonical (sorted-key) JSON serialization of the package content
 checksums — the same data `security.json` integrity checks carry.
 `content-validity`:: re-verifies the package against `security.json` on every
 request and reports the outcome with a UTC `lastChecked` timestamp; `reason`
-lists the integrity errors when `valid` is `false`.
+lists the integrity errors when `valid` is `false`. Entries also report
+`signed` and `encrypted`, and `signatureValid` for signed packages.
 
 Example `content-validity` response for a healthy package:
 
@@ -81,8 +139,31 @@ Example `content-validity` response for a healthy package:
     {
       "package": "example-package",
       "valid": true,
-      "lastChecked": "2024-05-28T12:34:56Z"
+      "lastChecked": "2024-05-28T12:34:56Z",
+      "signed": true,
+      "encrypted": false,
+      "signatureValid": true
     }
   ]
 }
 ----
+
+=== Reactor-level and per-package introspection
+
+The reactor also answers the reactor-level and per-package introspection
+endpoints of <<reactor-clause>>, GET-only and as `application/json`:
+
+[source]
+----
+GET /introspect/status          # => {"status": "running", "uptime": <seconds>, "packagesLoaded": <n>}
+GET /introspect/config          # => {"port", "storeDir", "cacheControl", "authEnabled", "registry"}
+GET /introspect/metrics         # => {"uptime": <seconds>, "requestsTotal": <n>, "requestsByStatus": {"<status>": <n>}}
+GET /package/<name>/status      # => {"package", "version", "status": "loaded", "valid"}
+GET /package/<name>/metadata    # => {"name", "version", "description", "author", "guid"}
+GET /package/<name>/logs        # => {"package", "logs": [...]} (?lines=N, default 100, clamped to 1..1000)
+----
+
+`/introspect/config` redacts secrets: userinfo in configured URLs is
+stripped and `deploy.json` secrets never appear. The per-package endpoints
+resolve `<name>` against the metadata names of all mounted packages and
+answer `404 Not Found` for unknown names.

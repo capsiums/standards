@@ -49,6 +49,10 @@ include::sections/m-handler-routes.adoc[]
 
 include::sections/m-testing.adoc[]
 
+include::sections/m-registries.adoc[]
+
+include::sections/m-writable-packages.adoc[]
+
 include::sections/07-reactor.adoc[]
 
 include::sections/08-management.adoc[]
@@ -62,5 +66,7 @@ include::sections/92-ruby-reactor.adoc[]
 include::sections/93-apache-reactor.adoc[]
 
 include::sections/94-nginx-reactor.adoc[]
+
+include::sections/95-legacy-compat.adoc[]
 
 include::sections/99-bibliography.adoc[]

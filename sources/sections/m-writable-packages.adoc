@@ -1,0 +1,195 @@
+[[module-writable-packages]]
+== Module: Writable packages
+
+The writable packages module makes an activated Capsium package interactive:
+while the base package remains immutable, a reactor claiming this module
+accepts writes — content changes, dataset record creation, update, and
+deletion — records them in a reactor-side overlay, and serves the merged
+result. It also defines the GraphQL API over datasets and the operation that
+folds the accumulated changes back into a new, valid `.cap` artifact.
+
+Writability is optional: a conformant core package is immutable and a core
+reactor serves it read-only. A package, packager, or reactor that claims the
+`writable-packages` module shall satisfy the additional requirements of this
+clause. The overlay mechanics this module builds on — layers, merged
+resolution, and tombstones — are defined by the layered storage module
+(<<module-layered-storage>>); the folding of overlays into a new package
+follows the composite packages module (<<module-composite>>).
+
+=== Additional requirements
+
+. A package whose `metadata.json` declares `readOnly: true` is immutable: a
+reactor shall answer every write request to it with `403 Forbidden`. When
+`readOnly` is absent or `false`, the package is writable.
+. The base package shall never be modified. Writes shall go to a new,
+append-only top layer created and maintained by the reactor (reactor-side),
+and merged resolution shall follow the top-first order of
+<<module-layered-storage>>.
+. Deletions shall be recorded as tombstones: a `.capsium-tombstones` file
+containing a JSON array of content-relative paths, kept in the topmost
+writable layer (<<module-layered-storage>>).
+. A reactor claiming this module shall provide the dataset CRUD API of this
+clause for every JSON-backed dataset of a writable package, with the
+specified status codes: `201` with a `Location` header and the stored item
+on creation, `200` on read and update, `204` on deletion, `404` for unknown
+datasets and items, `405` for unsupported methods, `409` on identifier
+conflict, `422` with details on schema violation, and `501` for dataset
+kinds the reactor cannot modify (for example SQLite).
+. Data item identity shall be determined by an `id` field of the item when
+present, and by the 1-based index of the item within the dataset, expressed
+as a string, otherwise.
+. A reactor claiming this module shall accept content writes: `PUT` of a
+content path creates or overwrites the corresponding content in the top
+layer (routes resolve on demand), and `DELETE` of a content path records a
+tombstone.
+. A reactor claiming this module should provide the GraphQL API of this
+clause over the datasets of a writable package; failures caused by the
+client request shall be reported in the GraphQL `errors` array and shall
+not produce HTTP `500` responses.
+. Writes shall become visible on the next request without a reactor restart
+(hot-swap), and the overlay state shall persist in the reactor work
+directory and be reloaded on restart.
+. A reactor claiming this module shall provide the save operation of this
+clause, folding base package and overlays into a new `.cap` file that shall
+pass package validation before it is reported.
+
+=== Write gate: `readOnly`
+
+The `readOnly` key of `metadata.json` (<<metadata-readonly>>) decides
+whether an activated package accepts writes:
+
+* `readOnly: true` — the package is immutable; every write request
+(`POST`, `PUT`, `DELETE` on content or data endpoints, mutations over
+GraphQL) is answered `403 Forbidden`.
+* `readOnly` absent or `false` — the package is writable through the APIs
+of this clause.
+
+=== Overlay write model
+
+The base package is never modified. On the first write to a writable
+package, the reactor creates a new top layer above all layers of the
+package (<<module-layered-storage>>) and maintains it in its work
+directory:
+
+* The top layer is append-only: every write adds content to it; nothing is
+ever removed from it or from any lower layer.
+* Merged resolution is top-first, so newly written content shadows the
+content of lower layers.
+* Deletions are recorded in the `.capsium-tombstones` file of the topmost
+writable layer as a JSON array of content-relative paths. A tombstoned path
+resolves to `404` thereafter, even when a lower layer still holds the file;
+writing the path again removes the tombstone.
+
+=== Dataset CRUD API
+
+For a writable package, each dataset route `/api/v1/data/<dataset>`
+(<<dataset-routes>>) accepts the following operations. All request and
+response bodies are `application/json`.
+
+.Dataset CRUD operations of a writable package
+[cols="2,5", options="header"]
+|===
+| Operation | Behavior
+
+| `POST /api/v1/data/<dataset>`
+| Creates a data item. On success: `201 Created` with a `Location` header
+identifying the new item and the stored item as the body.
+
+| `GET /api/v1/data/<dataset>/<id>`
+| Returns the identified item with `200 OK`, or `404 Not Found` when the
+dataset or the item does not exist.
+
+| `PUT /api/v1/data/<dataset>/<id>`
+| Replaces the identified item. On success: `200 OK` with the updated item.
+`404 Not Found` when the dataset or item is absent; `422 Unprocessable
+Content` when the item violates the dataset schema, with a body detailing
+the violations.
+
+| `DELETE /api/v1/data/<dataset>/<id>`
+| Deletes the identified item. On success: `204 No Content`; `404 Not
+Found` when the dataset or the item does not exist.
+|===
+
+Item identity:: An item is identified by the value of its `id` field when
+the item carries one; otherwise items are identified by their 1-based
+position within the dataset, expressed as a string (`"1"`, `"2"`, ...).
+
+Error reporting:: The API uses the following status codes consistently:
+
+* `400 Bad Request` — the request body is not well-formed JSON;
+* `403 Forbidden` — the package is read-only;
+* `404 Not Found` — the dataset or item does not exist;
+* `405 Method Not Allowed` — the endpoint does not support the request
+method;
+* `409 Conflict` — the item identifier is in conflict: it already exists on
+creation, or the body identifier does not match the path on update;
+* `422 Unprocessable Content` — the item violates the dataset schema; the
+response body details the violations;
+* `501 Not Implemented` — the dataset kind cannot be modified by this
+reactor (for example, SQLite datasets).
+
+=== Content writes
+
+Beyond datasets, a reactor claiming this module accepts writes to the
+content of a writable package:
+
+* `PUT <path>` creates or overwrites the content served at `<path>`: the
+body is written to the top layer, an already routed resource is replaced
+in the overlay, and previously unrouted paths become routable on demand —
+a subsequent `GET <path>` serves the written content.
+* `DELETE <path>` records a tombstone for the content served at `<path>`.
+The path resolves to `404 Not Found` thereafter, even when a lower layer
+still holds the file; `DELETE` of a path that has no servable content is
+answered `404 Not Found`.
+* A subsequent `PUT <path>` of a tombstoned path removes the tombstone and
+serves the newly written content.
+
+=== GraphQL API
+
+A reactor claiming this module should expose a GraphQL endpoint at
+`<mount>/graphql`, accepting both `POST` and `GET` requests, over the
+datasets of a writable package:
+
+* For each dataset, the schema provides a list query field (named after the
+dataset) with an optional `id:` argument selecting a single item.
+* For each dataset, the schema provides `create<Dataset>`,
+`update<Dataset>`, and `delete<Dataset>` mutations.
+* Item types are derived from the dataset's JSON schema when one is
+declared (<<dataset-routes>>); otherwise items are typed as a permissive
+JSON scalar. Datasets that cannot be represented as a JSON collection (for
+example, SQLite datasets) are omitted from the schema.
+* Failures caused by the client request — validation errors, unknown
+items, conflicts — are reported in the `errors` array of the GraphQL
+response; they shall not be reported as HTTP `500` responses.
+
+=== Hot-swap and persistence
+
+Writes take effect immediately: a change is visible on the next request
+without restarting the reactor. The overlay state — the top layer content
+and its tombstones — persists in the reactor work directory, so a reactor
+restart reloads the accumulated changes and serving continues from the
+merged state.
+
+=== Saving a writable package
+
+The save operation folds the current merged state of a writable package
+back into a self-contained artifact:
+
+`POST /package/<name>/save`:: builds a new package from the base package
+plus the accumulated overlays: tombstoned paths are removed, added and
+overwritten content is incorporated, recorded dataset changes are replayed
+into the dataset sources, and `manifest.json`, `routes.json`, and
+`security.json` are regenerated for the result. The new package is written
+as `<name>-<version>.cap` with the patch component of the version
+incremented, and it shall pass package validation (<<management-clause>>,
+Validation) before completion; the response returns the path of the new
+`.cap` file and its SHA-256 checksum, with the package name and new
+version. Signing artifacts are not folded into the saved package: it is
+unsigned until re-signed with <<module-signatures>>.
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class
+`writable-packages` SHALL satisfy requirements writable-packages-1 to
+writable-packages-9 of this clause. The conformance class is defined in
+<<conformance-writable-packages>>.

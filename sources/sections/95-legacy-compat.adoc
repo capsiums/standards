@@ -1,0 +1,155 @@
+[[annex-legacy-compat]]
+[appendix,obligation="informative"]
+== Legacy configuration forms
+
+Earlier revisions of this document and early implementations used
+configuration forms that predate the canonical schemas of Clause 5. This
+annex collects those legacy forms and defines how a reader normalizes them
+to the canonical schemas.
+
+A conformant reader shall accept every legacy form in this annex and
+normalize it on read as specified. A conformant writer shall emit only the
+canonical forms of Clause 5: the legacy forms exist for backward
+compatibility on read and shall not be produced.
+
+=== Legacy manifest
+
+Legacy form:: `manifest.json` with a `content` array of `file` / `mime`
+entries:
+
+[source,json]
+----
+{
+  "content": [
+    { "file": "content/index.html", "mime": "text/html" },
+    { "file": "content/styles.css", "mime": "text/css" }
+  ]
+}
+----
+
+Normalization:: Each entry becomes a resource of the canonical manifest
+(Clause 5, Manifest file), keyed by its `file` path, with `mime` mapped to
+`type` and `visibility` defaulting to `exported`:
+
+[source,json]
+----
+{
+  "resources": {
+    "content/index.html": { "type": "text/html", "visibility": "exported" },
+    "content/styles.css": { "type": "text/css", "visibility": "exported" }
+  }
+}
+----
+
+=== Legacy routes
+
+Legacy form 1:: `routes.json` with route entries whose target is a nested
+`target` object carrying `file` or `dataset`:
+
+[source,json]
+----
+{
+  "routes": [
+    { "path": "/", "target": { "file": "content/index.html" } },
+    { "path": "/api/v1/data/animals", "target": { "dataset": "animals" } }
+  ]
+}
+----
+
+Normalization:: The `target` object is folded into the route entry: `file`
+becomes `resource`, `dataset` becomes `dataset` (Clause 5, Resource
+routing):
+
+[source,json]
+----
+{
+  "routes": [
+    { "path": "/", "resource": "content/index.html" },
+    { "path": "/api/v1/data/animals", "dataset": "animals" }
+  ]
+}
+----
+
+Legacy form 2:: `routes.json` with `routes` as an object keyed by path,
+each value describing the target and options of the route:
+
+[source,json]
+----
+{
+  "routes": {
+    "/": { "resource": "content/index.html" },
+    "/api/v1/data/animals": { "dataset": "animals" }
+  }
+}
+----
+
+Normalization:: The object is converted to the canonical array form: each
+key becomes the `path` of a route entry and the value its remaining
+attributes.
+
+=== Legacy storage
+
+Legacy form:: `storage.json` with a `datasets` array of `name`, `source`,
+`format`, and `schema` entries:
+
+[source,json]
+----
+{
+  "datasets": [
+    {
+      "name": "animals",
+      "source": "data/animals.json",
+      "format": "json",
+      "schema": "data/animals.schema.json"
+    }
+  ]
+}
+----
+
+Normalization:: Each entry becomes a dataset of the canonical
+`storage.dataSets` object (Clause 5, Storage), keyed by `name`. `source` is
+kept; a present `schema` becomes `schemaFile` with `schemaType`
+`json-schema`; `format` is dropped — the dataset format is derived from
+the source file extension:
+
+[source,json]
+----
+{
+  "storage": {
+    "dataSets": {
+      "animals": {
+        "source": "data/animals.json",
+        "schemaFile": "data/animals.schema.json",
+        "schemaType": "json-schema"
+      }
+    }
+  }
+}
+----
+
+=== Legacy dependencies
+
+Legacy form:: `metadata.json` with `dependencies` as an array of `name` /
+`version` objects:
+
+[source,json]
+----
+{
+  "dependencies": [
+    { "name": "capsium://example.com/other-pkg", "version": ">=1.0.0" }
+  ]
+}
+----
+
+Normalization:: The array is converted to the canonical object form
+(<<metadata-dependencies>>): each entry's `name` becomes a GUID key and its
+`version` the version range:
+
+[source,json]
+----
+{
+  "dependencies": {
+    "capsium://example.com/other-pkg": ">=1.0.0"
+  }
+}
+----

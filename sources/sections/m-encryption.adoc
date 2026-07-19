@@ -25,8 +25,15 @@ file shall use the `.enc` extension.
 list whose entries declare `file`, `encryptedWith` (`"DEK"` or `"OpenPGP"`),
 and `algorithm` (`"OCB"` or `"OpenPGP"`, matching the encryption method).
 . A data encryption key (DEK) shall be encrypted with the recipient's public
-key so that only the holder of the corresponding private key can decrypt the
+key — wrapped with RSA-OAEP-SHA256 or sent as an armored OpenPGP message —
+so that only the holder of the corresponding private key can decrypt the
 DEK and subsequently the files.
+. The encryption envelope shall be recorded in `signature.json` with
+`algorithm` `"AES-256-GCM"`, a `keyManagement` of `"RSA-OAEP-SHA256"` or
+`"OpenPGP"`, the base64-encoded `iv` and `authTag` of the GCM ciphertext,
+and the protected DEK: either `encryptedDek` (base64 RSA-OAEP-SHA256-wrapped
+DEK) or `message` (armored OpenPGP message containing the DEK). Decryptors
+shall auto-detect the key management procedure from `keyManagement`.
 . Routes that serve encrypted files should indicate that the files are
 encrypted and specify the required decryption method, and the manifest should
 list encrypted files with their encryption details.
@@ -58,22 +65,55 @@ When `package.enc` is decrypted, the package looks like this, depending on what 
 
 Encryption Algorithm::: AES-256
 Mode of Operation::: GCM (Galois/Counter Mode) for authenticated encryption
-Key Management::: Secure distribution and storage of encryption keys
+Key Management::: RSA-OAEP-SHA256 wrapping of the data encryption key
+(DEK), or an armored OpenPGP message containing the DEK
 Encrypted File::: The encrypted package should have a `.enc` extension.
 
-==== Configuration Details in `packaging.json`
+==== Encryption envelope in `signature.json`
+
+The `signature.json` file of an encrypted package carries the cleartext
+encryption envelope: the algorithm, the key management procedure, the GCM
+parameters, and the protected DEK. The DEK is 32 random bytes; the `iv` is
+the base64-encoded 12-byte GCM initialization vector and `authTag` the
+base64-encoded 16-byte GCM authentication tag.
+
+RSA-OAEP-SHA256 key management — the DEK is wrapped with the recipient's
+RSA public key (OAEP with SHA-256 and MGF1-SHA256):
 
 [source,json]
 ----
 {
   "encryption": {
-    "algorithm": "AES-256",
-    "mode": "GCM",
-    "keyManagement": "secure",
-    "fileExtension": ".enc"
+    "algorithm": "AES-256-GCM",
+    "keyManagement": "RSA-OAEP-SHA256",
+    "encryptedDek": "<base64 RSA-OAEP-SHA256-wrapped data-encryption key>",
+    "iv": "<base64>",
+    "authTag": "<base64>"
   }
 }
 ----
+
+OpenPGP key management — the DEK is sent as an armored OpenPGP message to
+the recipient's OpenPGP public key:
+
+[source,json]
+----
+{
+  "encryption": {
+    "algorithm": "AES-256-GCM",
+    "keyManagement": "OpenPGP",
+    "message": "<armored OpenPGP message containing the data-encryption key>",
+    "iv": "<base64>",
+    "authTag": "<base64>"
+  }
+}
+----
+
+Decryptors auto-detect the key management procedure from `keyManagement`:
+given the corresponding private key, they recover the DEK from
+`encryptedDek` (RSA-OAEP-SHA256) or from `message` (OpenPGP) and decrypt
+`package.enc` transparently. `metadata.json` stays cleartext for
+identification.
 
 === Encrypted information
 
@@ -511,5 +551,5 @@ Manifest Configuration (`manifest.json`)::
 === Conformance
 
 A Capsium package / packager / reactor conforming to class `encryption` SHALL
-satisfy requirements encryption-1 to encryption-6 of this clause. The
+satisfy requirements encryption-1 to encryption-7 of this clause. The
 conformance class is defined in <<conformance-encryption>>.

@@ -84,6 +84,58 @@ Example GitHub Pages setup:
 4. Access your package at \https://<username>.github.io/<repository>/.
 ```
 
+=== Multiple mounted packages
+
+A reactor may mount several Capsium packages at once. Each mount is a map
+carrying the mount `path` and the package `source` (a `.cap` file, a
+package directory, or a `capsium://` package reference resolved through
+<<module-composite>> and <<module-registries>>). When mount paths are not
+given explicitly, the first package is mounted at `/` and every further
+package at `/<metadata.name>/`. Mount paths shall be unique within a
+reactor; conflicting mounts are rejected.
+
+Dispatch:: Requests are dispatched to the mounted package with the longest
+matching mount path prefix.
+Introspection:: The introspection endpoints of this clause aggregate all
+mounted packages.
+Per-package endpoints:: Endpoints under `/package/` resolve their
+`<name>` path segment against the `metadata.name` of every mounted
+package; an unknown name is answered `404 Not Found`.
+
+=== Serving rules
+
+A conformant reactor serves package routes with the following rules.
+
+Methods:: Package routes are served for `GET` and `HEAD` requests only.
+Any other method on a package route is answered `405 Method Not Allowed`
+with an `Allow` header listing the supported methods. A `HEAD` request
+returns the same headers as the corresponding `GET` response, without a
+response body.
+
+Caching:: Unless a route or mount declares its own `Cache-Control`,
+static resources are served with `Cache-Control: public,
+max-age=31536000` (one year); the default may be overridden per route
+(<<route-headers>>) or per mount.
+
+Media types:: Static resources are served with the MIME type recorded in
+`manifest.json`; when the manifest has no entry for a resource, the reactor
+falls back to a media type derived from the file name extension.
+
+Datasets:: Dataset routes respond with `application/json`. JSON datasets
+are served natively; YAML datasets are parsed and served as JSON; CSV
+datasets may be served as JSON. SQLite datasets are optional: a reactor
+that does not support them answers their routes with
+`501 Not Implemented`.
+
+Handler routes:: Routes that bind a method and path to an executable
+handler are executed only by reactors with a JavaScript execution contract;
+any other reactor answers them with `501 Not Implemented`
+(<<module-handler-routes>>).
+
+Write requests:: Write requests (`PUT`, `POST`, `DELETE` on content and
+dataset endpoints) are served only by reactors claiming the writable
+packages module (<<module-writable-packages>>).
+
 === HTTP API for Introspection of Reactor
 
 The reactor provides an HTTP API for introspection, allowing users to query the reactor's status, configuration, and operational metrics.
@@ -93,7 +145,10 @@ Endpoints::
   * `/introspect/config`: Returns the reactor's configuration details.
   * `/introspect/metrics`: Returns operational metrics (e.g., uptime, resource usage).
 
-Example API response for `/introspect/status`:
+Response shapes:: The reactor-level introspection endpoints answer
+`GET` requests with `application/json` bodies of the following shapes.
+
+`/introspect/status`:::
 [source,json]
 ----
 {
@@ -102,33 +157,66 @@ Example API response for `/introspect/status`:
   "packagesLoaded": 5
 }
 ----
+`uptime` is the reactor uptime in seconds; `packagesLoaded` is the number
+of mounted packages.
+
+`/introspect/config`:::
+The configuration representation is reactor-defined, but the endpoint
+shall redact secrets: credentials such as OAuth secrets, private key
+paths, and the userinfo component of configured URLs shall never appear
+in the response.
+
+`/introspect/metrics`:::
+[source,json]
+----
+{
+  "uptime": 3600,
+  "requestsTotal": 12480,
+  "requestsByStatus": {
+    "200": 12001,
+    "404": 475,
+    "500": 4
+  }
+}
+----
+`requestsTotal` counts all served requests; `requestsByStatus` counts them
+per HTTP status code.
 
 === HTTP API for Introspection of Package
 
-The reactor also provides an HTTP API to introspect individual Capsium packages, enabling users to retrieve package-specific information.
+The reactor also provides an HTTP API to introspect individual Capsium packages, enabling users to retrieve package-specific information. The
+`<name>` path segment is resolved against the `metadata.name` of every
+mounted package; an unknown name is answered `404 Not Found`.
 
 Endpoints::
-  * `/package/:packageId/status`: Returns the status of the specified package.
-  * `/package/:packageId/metadata`: Returns the metadata of the specified package.
-  * `/package/:packageId/logs`: Returns the logs related to the specified package.
+  * `/package/<name>/status`: Returns the status of the specified package.
+  * `/package/<name>/metadata`: Returns the metadata of the specified package.
+  * `/package/<name>/logs`: Returns the logs related to the specified
+package. The optional `lines` query parameter limits the number of log
+lines returned (default 100).
 
-Example API response for `/package/:packageId/metadata`:
+Example API response for `/package/<name>/metadata`:
 [source,json]
 ----
 {
   "name": "example-package",
   "version": "1.0.0",
   "description": "An example Capsium package",
-  "author": "Author Name"
+  "author": "Author Name",
+  "guid": "capsium://example.com/example-package"
 }
 ----
+
+A reactor claiming the writable packages module additionally answers
+`POST /package/<name>/save`, folding the package's accumulated overlay
+changes into a new `.cap` artifact (<<module-writable-packages>>).
 
 === Access to Activated Capsium Package Information, Metadata
 
 The reactor maintains detailed information and metadata for each activated Capsium package. This information includes version details, dependencies, and configuration settings.
 
 Access Methods::
-  * Via HTTP API: Endpoints such as `/package/:packageId/metadata` provide access to package metadata.
+  * Via HTTP API: Endpoints such as `/package/<name>/metadata` provide access to package metadata.
   * Via Configuration Files: Metadata can be stored and accessed through configuration files within the reactor's directory structure.
 
 Example metadata structure:
@@ -233,25 +321,18 @@ function decryptData(encryptedData, key) {
 
 === Updating Modifiable Capsium Packages
 
-The reactor allows for the dynamic updating of modifiable Capsium packages, ensuring that packages can be kept up-to-date without downtime.
+A Capsium package is immutable as distributed. Modifications of an
+activated package — content writes, dataset changes, and deletions — are
+defined by the writable packages module (<<module-writable-packages>>):
+writes accumulate in a reactor-side overlay, are visible on the next
+request (hot-swap), persist across restarts, and can be folded into a new
+package version with the save operation (`POST /package/<name>/save`).
+A reactor implements this behavior when it claims the Capsium
+writable-packages class (<<conformance-writable-packages>>).
 
 Update Mechanism:: Supports hot-swapping of packages with minimal disruption.
 Version Control:: Keeps track of package versions and allows rollback if necessary.
 API for Updates:: Provides an API for updating packages.
-
-Example update API endpoint in `update-api.js`:
-```javascript
-app.post('/update-package/:packageId', (req, res) => {
-  const packageId = req.params.packageId;
-  const newPackageData = req.body; // Assume package data is sent in the request body
-  try {
-    // Logic to update the package
-    res.status(200).send({ message: 'Package updated successfully' });
-  } catch (error) {
-    res.status(500).send({ message: 'Failed to update package', error });
-  }
-});
-```
 
 === Trusted Execution
 
@@ -408,6 +489,11 @@ The reactor can also expose information regarding the validity of the packaged c
 Endpoint:: `/api/v1/introspect/content-validity`
 Method:: GET
 Response:: JSON containing the validity status of all packaged content.
+Each entry carries the package name, the validity outcome, and the time of
+the check, with the reason when invalid; entries may additionally carry
+`signed` and `encrypted` flags and, for signed packages, the
+`signatureValid` outcome of signature verification
+(<<module-signatures>>, <<module-encryption>>).
 
 Example response:
 [source,json]
@@ -417,12 +503,17 @@ Example response:
     {
       "package": "example-package",
       "valid": true,
-      "lastChecked": "2024-05-28T12:34:56Z"
+      "lastChecked": "2024-05-28T12:34:56Z",
+      "signed": true,
+      "encrypted": false,
+      "signatureValid": true
     },
     {
       "package": "another-package",
       "valid": false,
       "lastChecked": "2024-05-28T12:34:56Z",
+      "signed": false,
+      "encrypted": false,
       "reason": "Signature mismatch"
     }
   ]
