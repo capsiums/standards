@@ -76,9 +76,10 @@ Example:
 ----
 
 
+[[manifest-visibility]]
 ==== Content visibility
 
-Content visibility in the Capsium package is managed through the `manifest.json` file, where resources can be designated as either `exported` or `private`. This designation determines whether the resource can be re-used by other packages or is restricted to the current package.
+Content visibility in the Capsium package is managed through the `manifest.json` file, where resources can be designated as either `exported` or `private`. This designation determines whether the resource can be re-used by other packages or is restricted to the current package. Re-use of `exported` resources across packages is defined by the composite packages module (<<module-composite>>).
 
 Requirements and Specifications::
 

@@ -1,0 +1,515 @@
+[[module-encryption]]
+== Module: Encryption
+
+The encryption module protects the content of a Capsium package from
+unauthorized access, ensuring that only intended recipients can decrypt and
+access the data. A Capsium package can contain both encrypted and cleartext
+content; encryption uses public/private keys and data encryption keys (DEK),
+or OpenPGP, and the whole package payload can be encrypted with AES-256 in
+GCM mode.
+
+Encryption is optional: a conformant core package, packager, or reactor works
+without it. A package, packager, or reactor that claims the `encryption`
+module shall satisfy the additional requirements of this clause.
+
+=== Additional requirements
+
+. Package encryption shall use the AES-256 algorithm with GCM
+(Galois/Counter Mode) for authenticated encryption, and the encrypted package
+file shall use the `.enc` extension.
+. Encryption happens before signing (<<module-signatures>>); the files
+`metadata.json` and `signature.json` itself are unencrypted.
+. Encryption keys shall be distributed and stored securely (key management).
+. When files are encrypted individually, the package shall carry an
+`encryption` configuration with a `publicKeyFile` and an `encryptedFiles`
+list whose entries declare `file`, `encryptedWith` (`"DEK"` or `"OpenPGP"`),
+and `algorithm` (`"OCB"` or `"OpenPGP"`, matching the encryption method).
+. A data encryption key (DEK) shall be encrypted with the recipient's public
+key so that only the holder of the corresponding private key can decrypt the
+DEK and subsequently the files.
+. Routes that serve encrypted files should indicate that the files are
+encrypted and specify the required decryption method, and the manifest should
+list encrypted files with their encryption details.
+
+=== Package encryption
+
+Encryption protects the package's contents from unauthorized access, ensuring that only intended recipients can decrypt and access the data.
+
+Encryption happens before signing. The file `metadata.json` and
+`signature.json` itself are unencrypted.
+
+When an encrypted and signed Capsium package is uncompressed, it looks like this:
+
+- package/metadata.json
+- package/signature.json
+- package/package.enc
+
+When `package.enc` is decrypted, the package looks like this, depending on what the package contains:
+
+- package/metadata.json
+- package/signature.json
+- package/routes.json
+- package/manifest.json
+- package/storage.json
+- package/contents/index.html
+- package/data/my_yaml.yaml
+
+==== Requirements and Specifications
+
+Encryption Algorithm::: AES-256
+Mode of Operation::: GCM (Galois/Counter Mode) for authenticated encryption
+Key Management::: Secure distribution and storage of encryption keys
+Encrypted File::: The encrypted package should have a `.enc` extension.
+
+==== Configuration Details in `packaging.json`
+
+[source,json]
+----
+{
+  "encryption": {
+    "algorithm": "AES-256",
+    "mode": "GCM",
+    "keyManagement": "secure",
+    "fileExtension": ".enc"
+  }
+}
+----
+
+=== Encrypted information
+
+==== General
+
+The Capsium package can contain both encrypted and cleartext content. Encryption uses public/private keys and data encryption keys (DEK) with the OCB algorithm or OpenPGP to ensure security.
+
+This section details the requirements and specifications for each aspect of encryption, along with relevant use cases and how encrypted files interact with `routes.json` and `manifest.json`.
+
+Example:
+[source,json]
+----
+{
+    "encryption": {
+        "publicKeyFile": "path/to/public.key",
+        "encryptedFiles": [
+            {
+                "file": "secret.dat",
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            }
+        ]
+    }
+}
+----
+
+
+
+==== Public Key File
+
+Requirements and Specifications::
+
+. publicKeyFile:
+Description::: Path to the public key file used for encrypting the Data Encryption Key (DEK) or directly encrypting files using OpenPGP.
+Type::: `string`
+Value Requirements:::
+*** Must be a valid file path.
+*** The file should exist and be accessible.
+*** Example: `"path/to/public.key"`
+
+Use Case::
+Encrypting DEK::: When encrypting sensitive files, the DEK is encrypted using the recipient's public key to ensure that only the recipient, who possesses the corresponding private key, can decrypt the DEK and subsequently the files.
+OpenPGP Encryption::: Files can be directly encrypted using OpenPGP with the recipient's public key, ensuring secure transmission and storage.
+
+Example Configuration::
+[source,json]
+----
+{
+    "encryption": {
+        "publicKeyFile": "path/to/public.key"
+    }
+}
+----
+
+==== Encrypted Files
+
+Requirements and Specifications::
+
+. encryptedFiles:
+Description::: List of files within the package that are encrypted.
+Type::: `array`
+Items:::
+file::::
+Description::::: Path to the encrypted file within the package.
+Type::::: `string`
+Value Requirements:::::
+***** Must be a valid file path.
+***** The file should exist and be part of the package.
+***** Example: `"secret.dat"`
+encryptedWith::::
+Description::::: Indicates the method used for encryption.
+Type::::: `string`
+Enumeration::::: `"DEK"`, `"OpenPGP"`
+Value Requirements:::::
+***** Must be `"DEK"` or `"OpenPGP"`.
+***** `"DEK"` specifies the use of Data Encryption Key.
+***** `"OpenPGP"` specifies the use of OpenPGP encryption.
+algorithm::::
+Description::::: The encryption algorithm used.
+Type::::: `string`
+Enumeration::::: `"OCB"`, `"OpenPGP"`
+Value Requirements:::::
+***** Must be `"OCB"` when `encryptedWith` is `"DEK"`.
+***** Must be `"OpenPGP"` when `encryptedWith` is `"OpenPGP"`.
+
+Use Case::
+Sensitive File Encryption with DEK::: To protect sensitive data within a package, files like `secret.dat` are encrypted using a DEK. The DEK is then encrypted with the recipient's public key to ensure secure transmission.
+Sensitive File Encryption with OpenPGP::: Files can be directly encrypted using OpenPGP with the recipient's public key, providing an alternative method for secure file encryption.
+
+Example Configuration::
+[source,json]
+----
+{
+    "encryption": {
+        "encryptedFiles": [
+            {
+                "file": "secret.dat",
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            },
+            {
+                "file": "confidential.txt",
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        ]
+    }
+}
+----
+
+==== Interaction with `routes.json` and `manifest.json`
+
+Requirements and Specifications::
+
+. routes.json:
+Description::: This file defines the routing of various endpoints within the package.
+Handling Encrypted Files::: Routes that serve encrypted files should indicate that the files are encrypted and specify the decryption method required.
+Example Configuration:::
+[source,json]
+----
+     {
+         "routes": [
+             {
+                 "path": "/download/secret",
+                 "file": "secret.dat",
+                 "encrypted": true,
+                 "decryptionMethod": "DEK"
+             },
+             {
+                 "path": "/download/confidential",
+                 "file": "confidential.txt",
+                 "encrypted": true,
+                 "decryptionMethod": "OpenPGP"
+             }
+         ]
+     }
+----
+
+. manifest.json:
+Description::: This file contains metadata about the package, including information about the encrypted files.
+Handling Encrypted Files::: The manifest should list encrypted files and provide details about their encryption methods.
+Example Configuration:::
+[source,json]
+----
+{
+    "manifestVersion": "1.0",
+    "description": "Capsium package containing both encrypted and cleartext content.",
+    "files": [
+        {
+            "path": "secret.dat",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            }
+        },
+        {
+            "path": "confidential.txt",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        },
+        {
+            "path": "readme.txt",
+            "encrypted": false
+        }
+    ]
+}
+----
+
+==== Detailed Use Cases and Examples
+
+===== Use Case: Serving Encrypted Files via `routes.json`
+
+When a client requests a file that is listed in `routes.json`, the server identifies if the file is encrypted based on the `encrypted` attribute. It then uses the specified `decryptionMethod` to decrypt the file before serving it to the client.
+
+Example Entry in `routes.json`::
+[source,json]
+----
+{
+    "routes": [
+        {
+            "path": "/download/secret",
+            "file": "secret.dat",
+            "encrypted": true,
+            "decryptionMethod": "DEK"
+        },
+        {
+            "path": "/download/confidential",
+            "file": "confidential.txt",
+            "encrypted": true,
+            "decryptionMethod": "OpenPGP"
+        }
+    ]
+}
+----
+Explanation:::
+  - The route `/download/secret` serves the `secret.dat` file, which is encrypted using a DEK and needs to be decrypted using the DEK method.
+  - The route `/download/confidential` serves the `confidential.txt` file, which is encrypted using OpenPGP and must be decrypted using the OpenPGP method.
+
+===== Use Case: Metadata Management in `manifest.json`
+
+The `manifest.json` provides a comprehensive overview of the files in the package, indicating which files are encrypted and detailing the encryption methods used. This helps clients understand how to handle and decrypt the files correctly.
+
+Example Entry in `manifest.json`::
+[source,json]
+----
+{
+    "manifestVersion": "1.0",
+    "description": "Capsium package containing both encrypted and cleartext content.",
+    "files": [
+        {
+            "path": "secret.dat",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            }
+        },
+        {
+            "path": "confidential.txt",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        },
+        {
+            "path": "readme.txt",
+            "encrypted": false
+        }
+    ]
+}
+----
+Explanation:::
+  - The `secret.dat` file is marked as encrypted with details specifying it uses a DEK and the OCB algorithm.
+  - The `confidential.txt` file is marked as encrypted with details specifying it uses OpenPGP.
+  - The `readme.txt` file is not encrypted.
+
+==== Value Requirements and Enumerations for Attributes
+
+. publicKeyFile:
+Type::: `string`
+Value Requirements::: Valid file path, accessible.
+
+. encryptedFiles:
+Type::: `array`
+Items:::
+file::::
+Type::::: `string`
+Value Requirements::::: Valid file path, part of the package.
+encryptedWith::::
+Type::::: `string`
+Enumeration::::: `"DEK"`, `"OpenPGP"`
+Value Requirements::::: Must be either `"DEK"` or `"OpenPGP"`.
+algorithm::::
+Type::::: `string`
+Enumeration::::: `"OCB"`, `"OpenPGP"`
+Value Requirements::::: Must match the encryption method.
+
+. routes.json:
+Attributes:::
+*** `path`: `string` (Valid route path)
+*** `file`: `string` (Valid file path)
+*** `encrypted`: `boolean`
+*** `decryptionMethod`: `string` (Enumeration: `"DEK"`, `"OpenPGP"`)
+
+. manifest.json:
+Attributes:::
+*** `manifestVersion`: `string`
+*** `description`: `string`
+*** `files`: `array`
+Items::::
+**** `path`: `string` (Valid file path)
+**** `encrypted`: `boolean`
+**** `encryptionDetails`: `object` (Required if `encrypted` is `true`)
+
+===== Attributes in `manifest.json`
+
+. manifestVersion:
+Type::: `string`
+Description::: Version of the manifest schema.
+Example::: `"1.0"`
+
+. description:
+Type::: `string`
+Description::: A description of the Capsium package.
+Example::: `"Capsium package containing both encrypted and cleartext content."`
+
+. files:
+Type::: `array`
+Description::: List of files included in the package.
+Items:::
+path::::
+Type::::: `string`
+Description::::: Path to the file within the package.
+Example::::: `"secret.dat"`
+encrypted::::
+Type::::: `boolean`
+Description::::: Indicates whether the file is encrypted.
+Example::::: `true` if the file is encrypted, `false` otherwise.
+encryptionDetails::::
+Type::::: `object`
+Description::::: Details about the encryption method used. Required if `encrypted` is `true`.
+Properties:::::
+encryptedWith::::::
+Type:::::::: `string`
+Enumeration:::::::: `"DEK"`, `"OpenPGP"`
+Description:::::::: The method used for encryption.
+Example:::::::: `"DEK"` or `"OpenPGP"`
+algorithm::::::
+Type:::::::: `string`
+Enumeration:::::::: `"OCB"`, `"OpenPGP"`
+Description:::::::: The encryption algorithm used.
+Example:::::::: `"OCB"` or `"OpenPGP"`
+
+Example Configuration in `manifest.json`::
+[source,json]
+----
+{
+    "manifestVersion": "1.0",
+    "description": "Capsium package containing both encrypted and cleartext content.",
+    "files": [
+        {
+            "path": "secret.dat",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            }
+        },
+        {
+            "path": "confidential.txt",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        },
+        {
+            "path": "readme.txt",
+            "encrypted": false
+        }
+    ]
+}
+----
+
+==== Detailed Example
+
+===== Combined Example Configuration
+
+Here is a comprehensive example showing how the `encryption`, `routes.json`, and `manifest.json` files work together in a Capsium package.
+
+Encryption Configuration (`encryption` section)::
+[source,json]
+----
+{
+    "encryption": {
+        "publicKeyFile": "path/to/public.key",
+        "encryptedFiles": [
+            {
+                "file": "secret.dat",
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            },
+            {
+                "file": "confidential.txt",
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        ]
+    }
+}
+----
+
+Routes Configuration (`routes.json`)::
+[source,json]
+----
+{
+    "routes": [
+        {
+            "path": "/download/secret",
+            "file": "secret.dat",
+            "encrypted": true,
+            "decryptionMethod": "DEK"
+        },
+        {
+            "path": "/download/confidential",
+            "file": "confidential.txt",
+            "encrypted": true,
+            "decryptionMethod": "OpenPGP"
+        },
+        {
+            "path": "/download/readme",
+            "file": "readme.txt",
+            "encrypted": false
+        }
+    ]
+}
+----
+
+Manifest Configuration (`manifest.json`)::
+[source,json]
+----
+{
+    "manifestVersion": "1.0",
+    "description": "Capsium package containing both encrypted and cleartext content.",
+    "files": [
+        {
+            "path": "secret.dat",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "DEK",
+                "algorithm": "OCB"
+            }
+        },
+        {
+            "path": "confidential.txt",
+            "encrypted": true,
+            "encryptionDetails": {
+                "encryptedWith": "OpenPGP",
+                "algorithm": "OpenPGP"
+            }
+        },
+        {
+            "path": "readme.txt",
+            "encrypted": false
+        }
+    ]
+}
+----
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `encryption` SHALL
+satisfy requirements encryption-1 to encryption-6 of this clause. The
+conformance class is defined in <<conformance-encryption>>.

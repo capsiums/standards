@@ -1,3 +1,4 @@
+[[reactor-clause]]
 == Capsium Reactor
 
 The Capsium reactor is the execution environment responsible for running Capsium packages. It supports various deployment environments, provides APIs for introspection, manages user authentication and data security, and ensures reliable and trusted execution of packages.
@@ -177,7 +178,7 @@ module.exports = function loggingPlugin(req, res, next) {
 
 === Handling User Authentication (Apache passwd, External OAuth Authentication Defined by Packages)
 
-The reactor supports various user authentication methods to secure access to its resources:
+The reactor supports various user authentication methods to secure access to its resources. The package-side configuration of these methods, and the access control of dataset routes, are defined by the authentication module (<<module-authentication>>); a reactor implements this behavior when it claims the Capsium authentication class (<<conformance-authentication>>).
 
 Apache passwd:: Uses `.htpasswd` files for basic HTTP authentication.
   * Requirements: `.htpasswd` file containing user credentials.
@@ -212,7 +213,7 @@ app.get('/callback', passport.authenticate('oauth2', { failureRedirect: '/' }), 
 
 === Decrypting User Data
 
-The reactor includes mechanisms for securely decrypting user data, ensuring it remains protected while in transit and at rest.
+The reactor includes mechanisms for securely decrypting user data, ensuring it remains protected while in transit and at rest. The package-side encryption configuration is defined by the encryption module (<<module-encryption>>); a reactor implements this behavior when it claims the Capsium encryption class (<<conformance-encryption>>).
 
 Encryption Algorithms:: Supports standard encryption algorithms such as AES-256.
 Key Management:: Secure storage and management of encryption keys.

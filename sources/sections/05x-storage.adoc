@@ -4,11 +4,15 @@
 
 // This specification outlines the structure and requirements for managing storage, data access, and data persistence in Capsium packages. By following these guidelines, developers can ensure that their packages are robust, maintainable, and compatible with the Capsium ecosystem.
 
-The Capsium package includes a comprehensive storage system that supports layered storage with a unified merged filesystem view, static data files, and databases. This section outlines the requirements and specifications for each storage type.
+The Capsium package includes a comprehensive storage system that supports
+static data files, databases, and — through the optional layered storage
+capability (<<module-layered-storage>>) — a unified merged filesystem view.
+This section outlines the requirements and specifications for each storage
+type.
 
 A Capsium package can contain datasets. Each dataset is composed of data items. A dataset can be one of:
 
-Layered storage:: Utilizes a unified merged filesystem view, similar to overlay FS, to manage different layers of content.
+Layered storage:: Utilizes a unified merged filesystem view, similar to overlay FS, to manage different layers of content (<<module-layered-storage>>).
 Static File with Structured Data:: Formats such as CSV, JSON, YAML.
 Backed by Schemas:: Formats that use JSON Schema or YAML Schema for validation.
 Static data files:: Contains immutable data files that are part of the package.
@@ -41,47 +45,6 @@ Example:
     }
 }
 ----
-
-
-==== Layered storage
-
-Layered storage in the Capsium package allows for multiple storage layers to be combined into a single, unified filesystem view, similar to the functionality of "overlay FS." This approach ensures that changes can be made in a non-destructive manner while preserving the original data.
-
-Requirements and Specifications::
-
-. Layer Structure:
-** The storage system must support multiple layers, where each layer can be read-only or writable.
-** Layers should be stacked in a specified order, with the topmost layer being the most recent.
-
-. Unified View:
-** The system must present a single filesystem view that merges all layers.
-** File access should respect the layer order, with the topmost layer taking precedence in case of conflicts.
-
-. Non-destructive Changes:
-** Changes should be written to the topmost writable layer, preserving lower layers intact.
-** Deletions in higher layers should not physically remove the files from lower layers but should mark them as deleted in the unified view.
-
-. Configuration:
-** The configuration for layered storage should be specified in a `manifest.json` file.
-** Example:
-[source,json]
-----
-     {
-         "layers": [
-             {
-                 "path": "base",
-                 "writable": false,
-                 "visibility": "exported"
-             },
-             {
-                 "path": "updates",
-                 "writable": true,
-                 "visibility": "private"
-             }
-         ]
-     }
-----
-** The `visibility` field determines if the layer is exposed as an inheritable interface (`exported`) or kept private (`private`).
 
 
 ==== Static data files
@@ -410,7 +373,7 @@ data files can be modified or updated.
 Since a Capsium package at its core is immutable, the mechanism for handling
 modifications is by storing action patches in an "action history" folder. This
 folder can be external to the Capsium package or inside a composite Capsium
-package. Each data change is stored as a separate patch file.
+package (<<module-composite>>). Each data change is stored as a separate patch file.
 
 When a Capsium reactor loads a Capsium package with an action history folder, it will replay those actions on top of the dataset so that the changes persist for users who access the activated Capsium package.
 

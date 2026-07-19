@@ -1,0 +1,119 @@
+[[module-signatures]]
+== Module: Digital signatures
+
+The signatures module gives a Capsium package authenticity and tamper
+evidence on top of the integrity checks of the core package. A signed package
+carries a digital signature that a recipient can verify with the publisher's
+public key, confirming both the identity of the signer and that the package
+has not been altered since it was signed.
+
+Signing is optional: a conformant core package, packager, or reactor works
+without it. A package, packager, or reactor that claims the `signatures`
+module shall satisfy the additional requirements of this clause.
+
+=== Additional requirements
+
+. A signed package shall carry a digital signature in a separate signature
+file (e.g., `signature.sig`) stored inside the package.
+. The signature shall be calculated on the combined data of
+`package/metadata.json`, `package/signature.json` (where the `signature` key
+is set to an empty string), and `package/package.enc`.
+. The signature algorithm shall be RSA with SHA-256, with a minimum key
+length of 2048 bits.
+. The signing key shall be represented by an X.509 certificate or an OpenPGP
+key, as recorded in the `certificateType` of `packaging.json`.
+. When present, the `digitalSignatures` configuration of `security.json`
+shall record the `publicKey` and `signatureFile` paths.
+. A verifying party shall use the public key to verify the digital signature,
+and the verification process should ensure that the package has not been
+altered since it was signed; a package whose signature does not verify should
+be rejected.
+
+=== Signature configuration in `security.json`
+
+Requirements and Specifications::
+
+. Digital Signature Implementation:
+publicKey::: Path to the public key file used for verifying the digital signature.
+Type:::: `string`
+Example:::: `"path/to/public.key"`
+signatureFile::: Path to the signature file that contains the digital signature.
+Type:::: `string`
+Example:::: `"package.sig"`
+
+. Verification Process:
+** The system must use the public key to verify the digital signature.
+** The verification process should ensure that the package has not been altered since it was signed.
+
+Use Case::
+Package Distribution::: When distributing the Capsium package, the publisher signs the package with their private key. The recipient can then verify the package using the included public key to ensure it has not been tampered with.
+
+Example Configuration::
+[source,json]
+----
+{
+    "security": {
+        "digitalSignatures": {
+            "publicKey": "path/to/public.key",
+            "signatureFile": "package.sig"
+        }
+    }
+}
+----
+
+=== Package signing using X.509 or OpenPGP
+
+Digital signatures ensure the authenticity and integrity of the package, verifying that it has not been tampered with and confirming the identity of the sender. Capsium packages can use either X.509 certificates or OpenPGP keys for digital signatures.
+
+Signing occurs on the entire package, and the signature is stored in a file
+called `signature.sig` inside the package. When encryption is also applied
+(<<module-encryption>>), encryption happens before signing.
+
+The digital signature is calculated on the combined data of:
+
+- package/metadata.json
+- package/signature.json (where the "signature" key is set to an empty string)
+- package/package.enc
+
+==== Requirements and Specifications
+
+Signature Algorithm::: RSA with SHA-256
+Key Length::: Minimum 2048 bits
+Digital Certificate:::
+X.509:::: Must follow the X.509 standard for public key infrastructure.
+OpenPGP:::: Must follow the OpenPGP standard for encryption and signatures.
+Signature File::: A separate file (e.g., `signature.sig`) containing the digital signature.
+
+==== Configuration Details in `packaging.json`
+
+[source,json]
+----
+{
+  "digitalSignature": {
+    "algorithm": "RSA-SHA256",
+    "keyLength": 2048,
+    "certificateType": "X.509",
+    "signatureFile": "signature.sig"
+  }
+}
+----
+
+For OpenPGP:
+
+[source,json]
+----
+{
+  "digitalSignature": {
+    "algorithm": "RSA-SHA256",
+    "keyLength": 2048,
+    "certificateType": "OpenPGP",
+    "signatureFile": "signature.sig"
+  }
+}
+----
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `signatures` SHALL
+satisfy requirements signatures-1 to signatures-6 of this clause. The
+conformance class is defined in <<conformance-signatures>>.

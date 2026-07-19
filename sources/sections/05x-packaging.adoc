@@ -3,43 +3,18 @@
 ==== General
 
 Encapsulation in the context of Capsium packages involves ensuring data
-integrity, security, and efficiency through compression, digital signatures, and
-encryption. These operations are configured and managed through a
-`packaging.json` file.
+integrity, security, and efficiency through compression. These operations are
+configured and managed through a `packaging.json` file.
 
-The `packaging.json` file serves as a centralized configuration for managing the
-compression, digital signature, and encryption aspects of the Capsium package
-encapsulation process. It ensures that all necessary parameters and standards
-are clearly defined and easily accessible for implementation.
+The `packaging.json` file serves as a centralized configuration for managing
+the compression of the Capsium package encapsulation process. It ensures that
+all necessary parameters and standards are clearly defined and easily
+accessible for implementation.
 
-Compression is always applied. Signing occurs on the entire package, and will be
-stored in a file called signature.sig inside the package. Encryption happens
-before signing. The file metadata.json and signature.json itself are
-unencrypted.
-
-When an encrypted and signed Capsium package is uncompressed, it looks like this:
-
-- package/metadata.json
-- package/signature.json
-- package/package.enc
-
-The digital signature is calculated on the combined data of:
-
-- package/metadata.json
-- package/signature.json (where the "signature" key is set to an empty string)
-- package/package.enc
-
-When package.enc is decrypted, the package looks like this, depending on what the package contains:
-
-- package/metadata.json
-- package/signature.json
-- package/routes.json
-- package/manifest.json
-- package/storage.json
-- package/contents/index.html
-- package/data/my_yaml.yaml
-
-
+Compression is always applied. Digital signing and encryption of the package
+are optional capabilities defined by the signatures and encryption modules
+(<<module-signatures>>, <<module-encryption>>); when claimed, their
+configuration is likewise recorded in `packaging.json`.
 
 [source,json]
 ----
@@ -48,18 +23,6 @@ When package.enc is decrypted, the package looks like this, depending on what th
     "algorithm": "zip",
     "level": "best",
     "fileExtension": ".zip"
-  },
-  "digitalSignature": {
-    "algorithm": "RSA-SHA256",
-    "keyLength": 2048,
-    "certificateType": "X.509",
-    "signatureFile": "signature.sig"
-  },
-  "encryption": {
-    "algorithm": "AES-256",
-    "mode": "GCM",
-    "keyManagement": "secure",
-    "fileExtension": ".enc"
   }
 }
 ----
@@ -88,74 +51,6 @@ File Extensions::: Compressed files should use the `.zip` extension.
   }
 }
 ----
-
-==== Digital Signature Using X.509 or OpenPGP
-
-Digital signatures ensure the authenticity and integrity of the package, verifying that it has not been tampered with and confirming the identity of the sender. Capsium packages can use either X.509 certificates or OpenPGP keys for digital signatures.
-
-===== Requirements and Specifications
-
-Signature Algorithm::: RSA with SHA-256
-Key Length::: Minimum 2048 bits
-Digital Certificate:::
-X.509:::: Must follow the X.509 standard for public key infrastructure.
-OpenPGP:::: Must follow the OpenPGP standard for encryption and signatures.
-Signature File::: A separate file (e.g., `signature.sig`) containing the digital signature.
-
-===== Configuration Details in `packaging.json`
-
-[source,json]
-----
-{
-  "digitalSignature": {
-    "algorithm": "RSA-SHA256",
-    "keyLength": 2048,
-    "certificateType": "X.509",
-    "signatureFile": "signature.sig"
-  }
-}
-----
-
-For OpenPGP:
-
-[source,json]
-----
-{
-  "digitalSignature": {
-    "algorithm": "RSA-SHA256",
-    "keyLength": 2048,
-    "certificateType": "OpenPGP",
-    "signatureFile": "signature.sig"
-  }
-}
-----
-
-
-==== Encryption
-
-Encryption protects the package's contents from unauthorized access, ensuring that only intended recipients can decrypt and access the data.
-
-===== Requirements and Specifications
-
-Encryption Algorithm::: AES-256
-Mode of Operation::: GCM (Galois/Counter Mode) for authenticated encryption
-Key Management::: Secure distribution and storage of encryption keys
-Encrypted File::: The encrypted package should have a `.enc` extension.
-
-===== Configuration Details in `packaging.json`
-
-[source,json]
-----
-{
-  "encryption": {
-    "algorithm": "AES-256",
-    "mode": "GCM",
-    "keyManagement": "secure",
-    "fileExtension": ".enc"
-  }
-}
-----
-
 
 ==== Optimization
 

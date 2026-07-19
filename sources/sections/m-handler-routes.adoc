@@ -1,0 +1,83 @@
+[[module-handler-routes]]
+== Module: Handler routes
+
+The handler routes module extends resource routing with dynamic HTTP API
+routes: routes that map a URL path and an HTTP method to an executable
+handler file contained in the package. Where the core package serves only
+static resources and datasets, a package claiming this module can ship API
+endpoints whose responses are produced by code.
+
+A reactor claiming this module executes the handler of a matching route. A
+reactor that does not claim this module should answer requests to handler
+routes with `501 Not Implemented` (see the reactor annexes for examples of
+this behavior).
+
+=== Additional requirements
+
+. A handler route in `routes.json` shall declare a `path`, an HTTP `method`,
+and a `handler` that references a script file contained in the package.
+. The `handler` path shall be package-relative and shall resolve to an
+existing file in the package.
+. A reactor claiming this module shall, on a request whose path and method
+match a handler route, execute the referenced handler and deliver its
+response to the client.
+. Requests to a handler route with an unsupported HTTP method shall be
+answered with an appropriate HTTP error status.
+. Header responses declared for the route — inline in `routes.json` or
+through external header files (<<route-headers>>) — shall be applied to the
+handler's response.
+. A reactor not claiming this module should answer handler routes with
+`501 Not Implemented`.
+
+=== HTTP API routes in `routes.json`
+
+The core `routes.json` file (Clause 5, Resource routing) maps URL paths to
+resources; this module adds route entries that carry a `method` and a
+`handler` instead of a `resource`.
+
+Example `routes.json` with HTTP API routes::
+
+[source,json]
+----
+{
+    "index": "index.html",
+    "routes": [
+        {
+            "path": "/api/v1/users",
+            "method": "GET",
+            "handler": "api/v1/users/getUsers.js"
+        },
+        {
+            "path": "/api/v1/users",
+            "method": "POST",
+            "handler": "api/v1/users/createUser.js"
+        },
+        {
+            "path": "/api/v1/users/:id",
+            "method": "PUT",
+            "handler": "api/v1/users/updateUser.js"
+        },
+        {
+            "path": "/api/v1/users/:id",
+            "method": "DELETE",
+            "handler": "api/v1/users/deleteUser.js"
+        }
+    ]
+}
+----
+
+In this example, the `routes.json` file defines dynamic HTTP API endpoints:
+each route binds a path (with optional path parameters such as `:id`) and an
+HTTP method to a handler script in the package, which is executed to produce
+the response.
+
+Handler routes participate in route visibility (`exported` / `private`,
+<<route-visibility>>) like any other route, and can be inherited and
+processed by dependent packages under the composite packages module
+(<<module-composite>>).
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `handler-routes`
+SHALL satisfy requirements handler-routes-1 to handler-routes-6 of this
+clause. The conformance class is defined in <<conformance-handler-routes>>.

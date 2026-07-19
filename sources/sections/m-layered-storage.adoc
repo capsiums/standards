@@ -1,0 +1,78 @@
+[[module-layered-storage]]
+== Module: Layered storage
+
+The layered storage module combines multiple storage layers into a single,
+unified filesystem view, similar to the functionality of "overlay FS". This
+approach ensures that changes can be made in a non-destructive manner while
+preserving the original data of a package.
+
+Layered storage is optional: the core package serves its content and datasets
+without it. A package, packager, or reactor that claims the `layered-storage`
+module shall satisfy the additional requirements of this clause.
+
+=== Additional requirements
+
+. The storage system shall support multiple layers, where each layer can be
+read-only or writable, and layers should be stacked in a specified order with
+the topmost layer being the most recent.
+. The system shall present a single filesystem view that merges all layers,
+and file access should respect the layer order, with the topmost layer taking
+precedence in case of conflicts.
+. Changes shall be written to the topmost writable layer, preserving lower
+layers intact; deletions in higher layers shall not physically remove the
+files from lower layers but shall mark them as deleted in the unified view
+(tombstones).
+. The configuration for layered storage should be specified in a
+`manifest.json` file, with each layer declaring its `path`, whether it is
+`writable`, and its `visibility`.
+. The `visibility` field shall determine whether the layer is exposed as an
+inheritable interface (`exported`) or kept private (`private`); `exported`
+layers may be activated or deactivated by composite packages
+(<<module-composite>>).
+
+=== Layer structure and configuration
+
+Layered storage in the Capsium package allows for multiple storage layers to be combined into a single, unified filesystem view, similar to the functionality of "overlay FS." This approach ensures that changes can be made in a non-destructive manner while preserving the original data.
+
+Requirements and Specifications::
+
+. Layer Structure:
+** The storage system must support multiple layers, where each layer can be read-only or writable.
+** Layers should be stacked in a specified order, with the topmost layer being the most recent.
+
+. Unified View:
+** The system must present a single filesystem view that merges all layers.
+** File access should respect the layer order, with the topmost layer taking precedence in case of conflicts.
+
+. Non-destructive Changes:
+** Changes should be written to the topmost writable layer, preserving lower layers intact.
+** Deletions in higher layers should not physically remove the files from lower layers but should mark them as deleted in the unified view.
+
+. Configuration:
+** The configuration for layered storage should be specified in a `manifest.json` file.
+** Example:
+[source,json]
+----
+     {
+         "layers": [
+             {
+                 "path": "base",
+                 "writable": false,
+                 "visibility": "exported"
+             },
+             {
+                 "path": "updates",
+                 "writable": true,
+                 "visibility": "private"
+             }
+         ]
+     }
+----
+** The `visibility` field determines if the layer is exposed as an inheritable interface (`exported`) or kept private (`private`).
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `layered-storage`
+SHALL satisfy requirements layered-storage-1 to layered-storage-5 of this
+clause. The conformance class is defined in
+<<conformance-layered-storage>>.
