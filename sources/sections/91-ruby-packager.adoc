@@ -1,7 +1,7 @@
 [appendix,obligation="informative"]
 == Ruby packager
 
-The `capsium` Ruby gem (version 0.2.0, MIT licensed, copyright Ribose) is the
+The `capsium` Ruby gem (version 0.6.0, MIT licensed, copyright Ribose) is the
 reference packager and reactor for Capsium packages. It packages a directory
 into a `.cap` file, unpacks, inspects and validates packages, and includes the
 WEBrick-based reactor described in Annex B. This annex describes the packager
@@ -31,9 +31,10 @@ The metadata model carries the field-level format rules of Clause 5
 (kebab-case `name`, semantic `version`, URI `guid`, UUID `uuid`) and reports
 human-readable format errors; these rules drive the `validate` command.
 
-The command-line interface is built on Thor. `Capsium::Cli` exposes three
-subcommands — `package`, `reactor`, and `convert` — implemented as Thor
-subcommand classes under `lib/capsium/cli`.
+The command-line interface is built on Thor. `Capsium::Cli` exposes the
+subcommands `package`, `reactor`, and `convert` — implemented as Thor
+subcommand classes under `lib/capsium/cli` — plus a top-level `install`
+command for registry installs.
 
 Notable dependencies: `lutaml-model` (domain models), `thor` (CLI), `rubyzip`
 (`.cap` compression and extraction), `marcel` (MIME type detection when
@@ -53,7 +54,7 @@ gem install capsium
 
 [source,bash]
 ----
-capsium package pack [--force/-f] path-to-package
+capsium package pack [--force/-f] [--bundle-deps] [--store DIR] [--registry R] path-to-package
 ----
 
 `pack` generates `manifest.json` and `routes.json` when absent, writes
@@ -62,6 +63,10 @@ capsium package pack [--force/-f] path-to-package
 `{name}-{version}.cap`, with `name` and `version` taken from `metadata.json`.
 Without `--force`, an existing target file aborts the build with
 `Capsium::Packager::FileAlreadyExistsError`.
+
+With `--bundle-deps`, the declared dependencies are resolved from the store
+or registry and encapsulated under `packages/` with a `packages/index.json`
+index (<<module-composite>>), producing a self-contained composite package.
 
 .Sample pack session
 ====
@@ -123,7 +128,32 @@ The gem reads both the canonical configuration forms of Clause 5 and the
 legacy (pre-0.2) gem forms, normalizing the legacy forms on read; writers emit
 only the canonical forms. For example, a legacy `dependencies` array of
 `{name, version}` objects in `metadata.json` is accepted and normalized to the
-canonical object form mapping each dependency GUID to its version range.
+canonical object form mapping each dependency GUID to its version range. The
+full set of accepted legacy forms and their normalization is given in
+<<annex-legacy-compat,annex E>>.
+
+=== Registry operations
+
+The gem implements the static registry of <<module-registries>>: publishing
+to a filesystem registry, and resolving and installing from a directory or an
+HTTPS registry (plain HTTP is accepted for loopback addresses only).
+
+[source,bash]
+----
+capsium package push example-package-1.0.0.cap --registry /srv/registry
+capsium install capsium://example.com/hello-world \
+    --constraint ">=1.0.0" --registry https://registry.example.com \
+    --store ~/.capsium/store
+----
+
+`push` validates the package, copies it into the registry, recomputes its
+SHA-256 checksum and size, and rewrites `index.json` atomically (temporary
+file plus rename). A remote registry is read-only. `install` resolves the
+newest version satisfying the constraint, verifies the downloaded `.cap`
+against the indexed checksum — rejecting it on mismatch — and installs it
+into the store as `<name>-<version>.cap`, updating the store index. The
+`--registry` and `--store` options default to the `CAPSIUM_REGISTRY` and
+`CAPSIUM_STORE` environment variables.
 
 === security.json generation
 

@@ -1,12 +1,14 @@
 [appendix,obligation="informative"]
 == nginx (OpenResty) reactor
 
-The `capsium-lua` project (version 0.2.0, MIT licensed) is a Capsium reactor
+The `capsium-lua` project (version 0.4.0, MIT licensed) is a Capsium reactor
 built on OpenResty, the Lua-enabled nginx distribution. It serves Capsium
 packages (`.cap` files) directly through nginx with Lua: a `.cap` file dropped
 into the packages directory is extracted on demand, verified against
 `security.json`, and routed, with optional per-mount configuration for paths,
-domains, headers, caching, and CORS.
+domains, headers, caching, and CORS. Mounts may also reference packages by
+`capsium://` URI, pulling them from a static registry
+(<<module-registries>>). Serving is read-only: the reactor has no write API.
 
 === Architecture
 
@@ -16,15 +18,25 @@ glue layer, with no duplicated logic:
 [source]
 ----
 lib/capsium/                  Framework-agnostic core (the rock)
-├── utils.lua                 Pure helpers (tables, JSON files, paths)
+├── utils.lua                 Pure helpers (tables, JSON files, paths,
+│                             URL userinfo redaction)
 ├── mime.lua                  MIME type detection (text/javascript per RFC 9239)
 ├── csv.lua                   Minimal CSV parser (dataset support)
+├── yaml.lua                  Minimal YAML parser (dataset support)
+├── semver.lua                Semantic versioning ranges
+├── crypto.lua                Decryption support (encrypted packages)
+├── log_buffer.lua            Per-worker ring buffer for request logs
 ├── reactor.lua               Reactor core: package management + introspection
+├── registry.lua              Static registry client (resolve/install)
+├── auth/                     Authentication (basic auth, OAuth2)
 ├── package/
 │   ├── package.lua           Package model (OOP): load/normalize/resolve
 │   ├── extractor.lua         Atomic .cap extraction (tmp dir + rename)
 │   ├── router.lua            Schema normalization + route auto-generation
-│   └── security.lua          security.json parsing + SHA-256 verification
+│   ├── security.lua          security.json parsing + SHA-256 verification
+│   ├── store.lua             Package store (dependency resolution)
+│   ├── composite.lua         Composite packages (dependency content)
+│   └── decrypter.lua         Package decryption
 └── adapters/
     ├── nginx.lua             fs/zip adapters (LuaFileSystem + lua-zip)
     └── hash.lua              SHA-256 (resty.sha256 in OpenResty,
@@ -53,6 +65,11 @@ responses (default `true`).
 `cache_ttl`:: TTL in seconds for the shared-dict cache (default `3600`).
 `packages_config_dir`:: Optional directory with per-package `<name>.json`
 mount configs, merged with `mounts` at startup.
+`registry`:: Default static registry for `capsium://` mount sources
+(<<module-registries>>); also settable with the `CAPSIUM_REGISTRY`
+environment variable.
+`store_dir`:: Package store into which registry-resolved packages are
+installed; also settable with the `CAPSIUM_STORE` environment variable.
 `mounts`:: Array of mount entries (below).
 
 Example mount entries:
@@ -64,6 +81,7 @@ Example mount entries:
   "extract_dir": "/var/lib/capsium/extracted",
   "cache_enabled": true,
   "cache_ttl": 3600,
+  "registry": "/var/lib/capsium/registry",
   "mounts": [
     {
       "package": "mn-samples-iso-0.1.0.cap",
@@ -88,6 +106,11 @@ Example mount entries:
           "max_age": 600
         }
       }
+    },
+    {
+      "package": "capsium://example.com/registry-app",
+      "path": "/registry-app",
+      "version": ">=1.0.0"
     }
   ]
 }
@@ -95,10 +118,14 @@ Example mount entries:
 
 Mount entry keys:
 
-`package`:: Package filename (`.cap` extension optional).
+`package`:: Package filename (`.cap` extension optional), or a
+`capsium://<guid>` registry reference (below).
 `path`:: Mount path prefix (default `/capsium/<package-name>`).
 `domain`:: Virtual host. Advisory: the mount answers on all hosts, and is
 preferred for the named host when mounts overlap.
+`version`:: Semantic version range for a `capsium://` source (default `*`).
+`registry`:: Per-mount registry override for a `capsium://` source.
+`store`:: Per-mount store override for a `capsium://` source.
 `options.cache_ttl`:: Static `Cache-Control` max-age override for this mount
 (default `31536000`, giving `public, max-age=31536000`).
 `options.headers`:: Extra response headers applied to every response from
@@ -106,10 +133,27 @@ this mount; an explicit `Cache-Control` here wins over `cache_ttl`.
 `options.cors`:: CORS policy: `allowed_origins` (array, `*` supported),
 `allowed_methods`, `allowed_headers`, `expose_headers`, `max_age`. Preflight
 `OPTIONS` requests are answered with `204` when CORS is configured.
+`options.encryption.privateKeyPath`:: Private key used to serve an encrypted
+package (<<module-encryption>>).
 
 Every package in `package_dir` is always also available at
-`/capsium/<package-name>` without configuration; `/api/v1/introspect` is
-reserved.
+`/capsium/<package-name>` without configuration; `/api/v1/introspect`,
+`/introspect`, and `/package` are reserved. Mounts are matched
+longest-path-first, with the `domain` preference applied first.
+
+=== Registry pull
+
+A mount whose `package` is a `capsium://<guid>` URI is resolved through the
+static registry (<<module-registries>>): on the first request the reactor
+resolves the newest indexed version satisfying the mount's `version`
+constraint, downloads the `.cap` from the registry — HTTPS only, except for
+loopback addresses, with the scheme re-validated on every redirect — and
+verifies its SHA-256 against the index entry, rejecting the download on
+mismatch. The verified file is installed atomically (write-then-rename) into
+the store as `<name>-<version>.cap` and served from there; a store file whose
+checksum already matches the index is reused without download. Composite
+package dependencies are resolved from the store
+(<<module-composite>>).
 
 === Extraction and integrity verification
 
@@ -136,8 +180,13 @@ auto-generated from `manifest.json` per the routing rules of Clause 5:
 Package routes are GET-only: other methods receive `405` with
 `Allow: GET, HEAD`; HEAD is served like GET without a body. Dynamic `handler`
 routes (<<module-handler-routes>>) are accepted by the parser but answered with `501 Not Implemented`.
-Dataset sources are served as JSON — `.json` served as-is, `.csv` converted to
-JSON objects; YAML and SQLite datasets are not supported by this reactor.
+Responses carry the media type derived from the file name extension when
+known — `.js` is `text/javascript` per RFC 9239 — with the `manifest.json`
+entry as the fallback.
+Dataset sources are served as `application/json` — `.json` served as-is,
+`.csv` converted to JSON objects, `.yaml` parsed by the bundled YAML parser
+and served as JSON. SQLite datasets are not supported by this reactor; their
+routes are answered with an error response naming the unsupported dataset.
 
 === Introspection API
 
@@ -150,12 +199,38 @@ path}]}]}`
 `/api/v1/introspect/content-hashes`::: `{contentHashes: [{package, hash}]}` —
 SHA-256 of the `.cap` blob.
 `/api/v1/introspect/content-validity`::: `{contentValidity: [{package, valid,
-lastChecked, reason?}]}` — the actual integrity verification result.
+lastChecked, reason?, signed?, encrypted, signatureValid?}]}` — the actual
+integrity verification result, with the signature and encryption posture of
+the package.
 
 All introspection endpoints lazily extract and load packages on demand, so a
 freshly started reactor reports every `.cap` in `package_dir` (cold-start
 introspection). Responses are cached in the `capsium_cache` shared dict with
-the configured `cache_ttl`.
+the configured `cache_ttl`. Of these endpoints, only `/api/v1/introspect` is
+guarded when a package mounted at `/` declares authentication
+(<<module-authentication>>).
+
+=== Reactor-level and per-package introspection
+
+The reactor also answers the reactor-level and per-package endpoints of
+<<reactor-clause>>, GET only:
+
+`/introspect/status`::: `{status: "running", uptime, packagesLoaded}` —
+`packagesLoaded` counts the configured mounts.
+`/introspect/config`::: The effective configuration, built from a whitelist:
+`authentication` secrets and `encryption.privateKeyPath` can never appear,
+and userinfo in the registry URL is redacted.
+`/introspect/metrics`::: `{uptime, requestsTotal, requestsByStatus}` — per
+status code counts from the `capsium_metrics` shared dict.
+`/package/<name>/status`::: `{package, version, status: "loaded", valid}`.
+`/package/<name>/metadata`::: `{name, version, description, author, guid}`.
+`/package/<name>/logs`::: `{package, logs: [...]}` from a per-worker ring
+buffer; `?lines=N` selects the number of lines (default 100, clamped to
+1..1000).
+
+The per-package endpoints resolve `<name>` against the metadata names of all
+mounted packages — resolving registry mounts lazily first — and answer `404`
+for unknown names.
 
 === Docker deployment
 

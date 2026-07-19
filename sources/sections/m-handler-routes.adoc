@@ -8,7 +8,7 @@ static resources and datasets, a package claiming this module can ship API
 endpoints whose responses are produced by code.
 
 A reactor claiming this module executes the handler of a matching route. A
-reactor that does not claim this module should answer requests to handler
+reactor that does not claim this module shall answer requests to handler
 routes with `501 Not Implemented` (see the reactor annexes for examples of
 this behavior).
 
@@ -20,14 +20,19 @@ and a `handler` that references a script file contained in the package.
 existing file in the package.
 . A reactor claiming this module shall, on a request whose path and method
 match a handler route, execute the referenced handler and deliver its
-response to the client.
+response to the client. The handler shall be an ECMAScript module whose
+default export — or whose named `fetch` export — is a function of the
+shape `(request: Request) => Response | Promise<Response>`.
 . Requests to a handler route with an unsupported HTTP method shall be
-answered with an appropriate HTTP error status.
+answered with `405 Method Not Allowed` and an `Allow` header listing the
+supported methods.
 . Header responses declared for the route — inline in `routes.json` or
 through external header files (<<route-headers>>) — shall be applied to the
 handler's response.
-. A reactor not claiming this module should answer handler routes with
-`501 Not Implemented`.
+. A failure to import the handler module, or a runtime failure during its
+execution, shall be answered with `502 Bad Gateway`.
+. A reactor without a JavaScript execution contract shall answer handler
+routes with `501 Not Implemented`.
 
 === HTTP API routes in `routes.json`
 
@@ -74,10 +79,49 @@ the response.
 Handler routes participate in route visibility (`exported` / `private`,
 <<route-visibility>>) like any other route, and can be inherited and
 processed by dependent packages under the composite packages module
-(<<module-composite>>).
+(<<module-composite>>); request headers supplanted with `requestHeaders`
+are applied when the request is forwarded to the handler.
+
+=== JavaScript handler contract
+
+A handler is an ECMAScript module loaded from the package content. The
+reactor imports the module and invokes its handler function for each
+matching request:
+
+[source,javascript]
+----
+// content/api/v1/hello.js
+export default async function (request) {
+  return new Response(JSON.stringify({ hello: "world" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+// alternatively, a named "fetch" export:
+export function fetch(request) {
+  return new Response("OK");
+}
+----
+
+The handler function receives a `Request` and returns a `Response` or a
+`Promise` resolving to a `Response`, following the fetch handler contract
+of the web platform. The reactor matches the route's declared HTTP `method`
+before dispatching; a mismatch is answered `405 Method Not Allowed` with an
+`Allow` header. A module that fails to import, or a handler that throws or
+rejects, is answered `502 Bad Gateway`.
+
+Sandboxing guidance:: Handlers are package-supplied code and should be
+executed with least privilege. Browser-based reactors should execute
+handlers inside a service worker or an equivalent isolated browsing
+context, with a restrictive Content Security Policy (for example,
+`default-src 'self'`, no `unsafe-eval`) so that a handler can only reach
+the resources of its own package. A reactor without such a JavaScript
+execution contract shall not attempt to run handlers and shall answer
+`501 Not Implemented`.
 
 === Conformance
 
 A Capsium package / packager / reactor conforming to class `handler-routes`
-SHALL satisfy requirements handler-routes-1 to handler-routes-6 of this
+SHALL satisfy requirements handler-routes-1 to handler-routes-7 of this
 clause. The conformance class is defined in <<conformance-handler-routes>>.

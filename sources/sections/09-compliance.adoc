@@ -22,11 +22,11 @@ in <<reactor-clause>>.
 
 Module conformance classes — one per Capsium module defined in <<modules>>:
 Capsium signatures, Capsium encryption, Capsium layered-storage, Capsium
-composite, Capsium authentication, Capsium handler-routes, and Capsium
-testing. Module classes are claimed à la carte; an artifact or implementation
-claiming a module class shall satisfy every numbered additional requirement
-of the corresponding module clause, in addition to its core class
-requirements.
+composite, Capsium authentication, Capsium handler-routes, Capsium testing,
+Capsium registries, and Capsium writable-packages. Module classes are
+claimed à la carte; an artifact or implementation claiming a module class
+shall satisfy every numbered additional requirement of the corresponding
+module clause, in addition to its core class requirements.
 
 Informative examples of implementations of these classes are given in Annexes
 A to D.
@@ -110,8 +110,16 @@ statements are true:
 serves every route defined by the package's `routes.json` as specified in
 <<reactor-clause>>, including dataset routes under `/api/v1/data/` and the
 package index route.
+. Package routes are served for `GET` and `HEAD` requests only; `HEAD`
+returns the response headers without a body, and any other method is
+answered `405 Method Not Allowed` with an `Allow` header (<<reactor-clause>>,
+Serving rules).
 . Static resources are served with the MIME types recorded in
-`manifest.json`.
+`manifest.json`, falling back to extension-derived media types, and with
+`Cache-Control: public, max-age=31536000` unless a route or mount declares
+its own.
+. Dataset routes respond `application/json`; a reactor that does not
+support SQLite datasets answers their routes with `501 Not Implemented`.
 . When `security.json` is present in a package, the reactor verifies the
 package content against the listed SHA-256 checksums on activation (Clause 5,
 Security; <<management-clause>>, Deployment and activation).
@@ -124,12 +132,23 @@ GET requests under `/api/v1/introspect` for each activated package:
 .. `/api/v1/introspect/content-hashes` returning content hashes;
 .. `/api/v1/introspect/content-validity` returning the integrity verification
 outcome.
+. The reactor exposes the reactor-level introspection endpoints of
+<<reactor-clause>> — `/introspect/status`, `/introspect/config` (with
+secrets and URL userinfo redacted), and `/introspect/metrics` — with the
+specified response shapes, and the per-package endpoints
+`/package/<name>/status`, `/package/<name>/metadata`, and
+`/package/<name>/logs` (with the `lines` parameter), resolving `<name>`
+against the metadata names of the mounted packages and answering `404 Not
+Found` for unknown names.
+. When several packages are mounted, requests are dispatched by longest
+mount path prefix and introspection aggregates all mounted packages
+(<<reactor-clause>>, Multiple mounted packages).
 . Requests to routes or endpoints with an unsupported HTTP method are answered
 with an appropriate HTTP error status.
 
 A Core Reactor may additionally claim any of the module conformance classes
 below; their absence does not affect core conformance. A reactor that does
-not claim the Capsium handler-routes class should answer requests to handler
+not claim the Capsium handler-routes class shall answer requests to handler
 routes with `501 Not Implemented`.
 
 [[conformance-signatures]]
@@ -141,16 +160,20 @@ all of the following statements are true (<<module-signatures>>):
 . The artifact or implementation satisfies its core class (Core Package, Core
 Packager, or Core Reactor).
 . The package carries a digital signature in a signature file inside the
-package, calculated over the combined data of `metadata.json`,
-`signature.json` (with the `signature` key empty), and `package.enc`
-(signatures-1, signatures-2).
+package, calculated over the canonical payload: the bytes of the files
+referenced by `security.integrityChecks.checksums`, concatenated in sorted
+key order (signatures-1, signatures-2).
 . The signature uses RSA with SHA-256 and a key of at least 2048 bits,
-represented by an X.509 certificate or an OpenPGP key (signatures-3,
-signatures-4).
+represented by an X.509 certificate or an OpenPGP key, with the
+`certificateType` of `security.json` selecting the verification procedure
+(signatures-3, signatures-4).
+. An OpenPGP signature is an armored detached signature over the same
+canonical payload, with the signer's public key embedded in the package
+(signatures-6).
 . A packager claiming this class produces the signature and records it as
 specified; a reactor claiming this class verifies the signature with the
 public key and should reject a package whose signature does not verify
-(signatures-5, signatures-6).
+(signatures-5, signatures-7).
 
 [[conformance-encryption]]
 === Capsium encryption
@@ -166,11 +189,16 @@ unencrypted (encryption-1, encryption-2).
 . Encryption keys are distributed and stored securely, and any data
 encryption key (DEK) is encrypted with the recipient's public key
 (encryption-3, encryption-5).
+. The encryption envelope in `signature.json` declares `AES-256-GCM` with a
+`keyManagement` of `"RSA-OAEP-SHA256"` or `"OpenPGP"`, carrying the GCM
+`iv` and `authTag` and the protected DEK (`encryptedDek` or `message`), and
+a decryptor auto-detects the key management procedure from `keyManagement`
+(encryption-6).
 . Individually encrypted files are declared in the `encryption` configuration
 with `file`, `encryptedWith`, and `algorithm` values from the defined
 enumerations (encryption-4).
 . Routes serving encrypted files indicate the required decryption method, and
-the manifest lists the encryption details of encrypted files (encryption-6).
+the manifest lists the encryption details of encrypted files (encryption-7).
 
 [[conformance-layered-storage]]
 === Capsium layered-storage
@@ -180,13 +208,18 @@ when all of the following statements are true (<<module-layered-storage>>):
 
 . The artifact or implementation satisfies its core class (Core Package, Core
 Packager, or Core Reactor).
-. Multiple ordered read-only or writable layers are supported and merged into
-a single filesystem view in which the topmost layer takes precedence
+. Layers are declared in `storage.json` under `storage.layers`, ordered from
+bottom to top, each with `path`, `writable`, and `visibility`, and the
+`content/` directory always constitutes the implicit bottom layer
 (layered-storage-1, layered-storage-2).
-. Changes are written to the topmost writable layer, and deletions mark files
-as deleted without removing them from lower layers (layered-storage-3).
-. Layers are configured with `path`, `writable`, and `visibility`
-(`exported` / `private`) (layered-storage-4, layered-storage-5).
+. The layers are merged into a single filesystem view resolved top-first with
+first hit winning, missing content falls through to dependencies' exported
+content, and non-content paths bypass the layers (layered-storage-3,
+layered-storage-4, layered-storage-7).
+. Deletions are recorded as `.capsium-tombstones` JSON arrays honored at and
+below their layer, runtime marker files are not covered by pack-time
+checksums, and `private` layers are invisible to dependent packages
+(layered-storage-5, layered-storage-6, layered-storage-8).
 
 [[conformance-composite]]
 === Capsium composite
@@ -196,16 +229,24 @@ all of the following statements are true (<<module-composite>>):
 
 . The artifact or implementation satisfies its core class (Core Package, Core
 Packager, or Core Reactor).
-. A composite package bundles the included packages under a `packages`
-directory with a manifest recording its dependencies (composite-1,
-composite-2).
-. Routes of included packages are remapped to avoid conflicts, and inherited
-layers are selectively activated or deactivated (composite-3, composite-4).
-. Route inheritance declares the originating package and route, honours
-`exported` visibility, and supports remapping, response rewriting, header
-enhancement, and request header supplanting (composite-5, composite-6).
+. Dependencies are declared in `metadata.json` as a GUID-to-range object, and
+dependency resource references use the `<guid>/<path>` form with longest
+GUID prefix matching (composite-1, composite-2).
+. Dependency packages are resolved through the bundle → store → registry
+chain, selecting the newest satisfying version; a package store holds
+`<name>-<version>.cap` files with an optional GUID index (composite-3,
+composite-4).
+. Encapsulated dependencies are embedded under `packages/` with
+`packages/index.json`, covered by the parent checksums, re-verified at
+resolution, and verified against their own `security.json` at activation
+(composite-5).
+. On activation, dependency content becomes a lower read-only layer and only
+`exported` resources and routes are visible to the dependent (composite-6).
+. Route inheritance declares the dependency resource and supports remapping,
+response rewriting, response header enhancement, and request header
+supplanting with the module's semantics (composite-7).
 . Each included package and the composite package itself carry integrity
-hashes and should be signed (composite-7).
+hashes and should be signed (composite-8).
 
 [[conformance-authentication]]
 === Capsium authentication
@@ -236,12 +277,15 @@ when all of the following statements are true (<<module-handler-routes>>):
 Packager, or Core Reactor).
 . Handler routes declare `path`, `method`, and a `handler` resolving to a
 file in the package (handler-routes-1, handler-routes-2).
-. A reactor claiming this class executes the handler of a matching route and
-answers unsupported methods with an appropriate HTTP error status
-(handler-routes-3, handler-routes-4).
+. A reactor claiming this class executes the handler of a matching route as
+an ECMAScript module with a default or named `fetch` export of the shape
+`(request: Request) => Response | Promise<Response>`, answers unsupported
+methods with `405 Method Not Allowed` and an `Allow` header, and answers
+import or runtime failures with `502 Bad Gateway` (handler-routes-3,
+handler-routes-4, handler-routes-6).
 . Declared header responses are applied to handler responses, and reactors
-not claiming this class answer handler routes with `501 Not Implemented`
-(handler-routes-5, handler-routes-6).
+without a JavaScript execution contract answer handler routes with
+`501 Not Implemented` (handler-routes-5, handler-routes-7).
 
 [[conformance-testing]]
 === Capsium testing
@@ -259,3 +303,62 @@ declare `name` and `type` (testing-1).
 `config_file` (testing-2 to testing-5).
 . A test runner claiming this class correctly interprets and executes the
 tests of all four types (testing-6).
+
+[[conformance-registries]]
+=== Capsium registries
+
+An artifact or implementation conforms to the Capsium registries class when
+all of the following statements are true (<<module-registries>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. The registry is a directory or HTTPS base URL whose root `index.json`
+follows the module's schema, with package files stored relative to the
+registry root and their SHA-256 checksums and sizes recorded (registries-1,
+registries-2); network access uses HTTPS except for loopback addresses
+(registries-3).
+. A push validates the package, copies the `.cap` file in, recomputes the
+checksum and size, and rewrites `index.json` atomically (registries-4).
+. Resolution selects the newest indexed version satisfying the requested
+semantic version range (registries-5).
+. Installation verifies the downloaded file against the indexed checksum,
+rejects mismatches, and installs into a package store as
+`<name>-<version>.cap` with the store index updated (registries-6).
+. `capsium://` package references in mounts and dependencies resolve through
+the bundle → store → registry chain (registries-7).
+
+[[conformance-writable-packages]]
+=== Capsium writable-packages
+
+An artifact or implementation conforms to the Capsium writable-packages
+class when all of the following statements are true
+(<<module-writable-packages>>):
+
+. The artifact or implementation satisfies its core class (Core Package, Core
+Packager, or Core Reactor).
+. A package declaring `readOnly: true` is immutable and its write requests
+are answered `403 Forbidden` (writable-packages-1).
+. The base package is never modified: writes go to an append-only reactor
+top layer, merged resolution is top-first, and deletions are recorded as
+`.capsium-tombstones` (writable-packages-2, writable-packages-3).
+. The dataset CRUD API behaves as specified: `201` with `Location` on
+creation, `200` on read and update, `204` on deletion, `400` on malformed
+JSON, `404` on unknown dataset or item, `405` on unsupported methods, `409`
+on identifier conflict, `422` with details on schema violation, and `501`
+for dataset kinds the reactor cannot modify; item identity follows the `id`
+field or the 1-based index as a string (writable-packages-4,
+writable-packages-5).
+. Content writes behave as specified: `PUT` creates or overwrites with
+on-demand routing and un-tombstoning, `DELETE` tombstones with `404`
+semantics (writable-packages-6).
+. The GraphQL API exposes per-dataset list queries and
+create/update/delete mutations, derives item types from the dataset schema
+or a permissive JSON scalar, and reports request failures in the `errors`
+array rather than as HTTP `500` (writable-packages-7).
+. Writes are visible on the next request without restart, and overlay state
+persists in the reactor work directory across restarts
+(writable-packages-8).
+. The save operation folds base and overlays into a new
+`<name>-<version>.cap` with the patch version incremented, regenerates
+`manifest.json`, `routes.json`, and `security.json`, validates the result,
+and returns its path and SHA-256 checksum (writable-packages-9).

@@ -247,6 +247,11 @@ the programming language.
 
 This is the HTTP REST API that the Capsium reactor offers for an activated Capsium package to the HTTP user. The following endpoints are supported for all datasets, as defined in `storage.json`.
 
+NOTE: The dataset CRUD API served by a reactor — mount points under
+`/api/v1/data/`, item identity, and exact status codes — is defined by the
+writable packages module (<<module-writable-packages>>). This section
+describes the operations abstractly.
+
 ===== GET (Fetch Data)
 
 Endpoint::: `/dataset/{datasetId}/data`
@@ -369,6 +374,12 @@ Example:
 A Capsium package containing data may allow modification of data inside the
 included datasets. Configuration needs to be specified in the package on which
 data files can be modified or updated.
+
+NOTE: Reactors claiming the writable packages module implement modification
+with the reactor-side overlay model — top-layer writes, tombstones, and
+dataset logs — defined by <<module-writable-packages>>. The action history
+mechanism described here is an alternative package-side design for recording
+the same changes.
 
 Since a Capsium package at its core is immutable, the mechanism for handling
 modifications is by storing action patches in an "action history" folder. This

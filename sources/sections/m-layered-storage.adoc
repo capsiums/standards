@@ -12,67 +12,121 @@ module shall satisfy the additional requirements of this clause.
 
 === Additional requirements
 
-. The storage system shall support multiple layers, where each layer can be
-read-only or writable, and layers should be stacked in a specified order with
-the topmost layer being the most recent.
-. The system shall present a single filesystem view that merges all layers,
-and file access should respect the layer order, with the topmost layer taking
-precedence in case of conflicts.
-. Changes shall be written to the topmost writable layer, preserving lower
-layers intact; deletions in higher layers shall not physically remove the
-files from lower layers but shall mark them as deleted in the unified view
-(tombstones).
-. The configuration for layered storage should be specified in a
-`manifest.json` file, with each layer declaring its `path`, whether it is
-`writable`, and its `visibility`.
+. The storage system shall support multiple layers stacked in a declared
+order; the layers of a package shall be declared in `storage.json` under
+`storage.layers` as an array ordered from bottom to top, each layer
+declaring its `path`, whether it is `writable`, and its `visibility`.
+. The `content/` directory of the package shall always constitute the
+implicit bottom layer, even when `storage.layers` is declared; every
+declared layer is a package-relative directory that mirrors the `content/`
+tree.
+. The system shall present a single filesystem view that merges all layers;
+resolution shall proceed from the top layer to the bottom layer, and the
+first hit wins.
+. A content path that misses all of the package's own layers shall fall
+through to the exported content of its dependencies
+(<<module-composite>>): content of the package itself shadows dependency
+content at the same path.
+. Deletions shall be recorded as tombstones in a `.capsium-tombstones`
+file — a JSON array of content-relative paths — kept in a writable layer;
+tombstones shall be honored at and below their layer, so that the
+tombstones of a dependent package also suppress dependency content beneath
+them.
+. Runtime marker files — the `.capsium-tombstones` file itself — shall not
+be covered by pack-time checksums (Clause 5, Security); other dotfiles
+(for example `.htpasswd`) are normal package content and shall be covered
+when packed.
+. Resolution through layers shall apply to content paths only: non-content
+paths, such as dataset sources under `data/`, shall bypass the layers and
+resolve at the package root.
 . The `visibility` field shall determine whether the layer is exposed as an
-inheritable interface (`exported`) or kept private (`private`); `exported`
-layers may be activated or deactivated by composite packages
+inheritable interface (`exported`) or kept private (`private`); a layer
+marked `private` shall be invisible to dependent packages
 (<<module-composite>>).
 
 === Layer structure and configuration
 
-Layered storage in the Capsium package allows for multiple storage layers to be combined into a single, unified filesystem view, similar to the functionality of "overlay FS." This approach ensures that changes can be made in a non-destructive manner while preserving the original data.
+Each layer is a package-relative directory that mirrors the `content/`
+tree: a file at `<layer>/index.html` shadows or augments
+`content/index.html`. Layers are declared in `storage.json` under
+`storage.layers`, ordered from bottom to top, and the `content/` directory
+always sits beneath them as the implicit bottom layer:
 
-Requirements and Specifications::
-
-. Layer Structure:
-** The storage system must support multiple layers, where each layer can be read-only or writable.
-** Layers should be stacked in a specified order, with the topmost layer being the most recent.
-
-. Unified View:
-** The system must present a single filesystem view that merges all layers.
-** File access should respect the layer order, with the topmost layer taking precedence in case of conflicts.
-
-. Non-destructive Changes:
-** Changes should be written to the topmost writable layer, preserving lower layers intact.
-** Deletions in higher layers should not physically remove the files from lower layers but should mark them as deleted in the unified view.
-
-. Configuration:
-** The configuration for layered storage should be specified in a `manifest.json` file.
-** Example:
 [source,json]
 ----
-     {
-         "layers": [
-             {
-                 "path": "base",
-                 "writable": false,
-                 "visibility": "exported"
-             },
-             {
-                 "path": "updates",
-                 "writable": true,
-                 "visibility": "private"
-             }
-         ]
-     }
+{
+  "storage": {
+    "layers": [
+      {
+        "path": "base",
+        "writable": false,
+        "visibility": "exported"
+      },
+      {
+        "path": "updates",
+        "writable": true,
+        "visibility": "private"
+      }
+    ]
+  }
+}
 ----
-** The `visibility` field determines if the layer is exposed as an inheritable interface (`exported`) or kept private (`private`).
+
+In this example the effective stack, from bottom to top, is `content/`
+(implicit bottom layer), then `base/`, then `updates/`. A package without a
+`layers` configuration behaves as a single implicit layer — its `content/`
+directory.
+
+layer attributes::
+
+`path`::: Package-relative directory of the layer, mirroring the
+`content/` tree.
+`writable`::: Whether a reactor may write changes into the layer. Writes —
+performed by reactors claiming the writable packages module
+(<<module-writable-packages>>) — go only to the topmost writable layer,
+preserving lower layers intact.
+`visibility`::: `exported` layers are visible to dependent packages as an
+inheritable interface; `private` layers are invisible to dependent packages
+(<<module-composite>>).
+
+=== Merged resolution
+
+The merged view resolves a content path against the stack from the top
+layer to the bottom layer; the first layer containing the path wins. A
+content path that is present in none of the package's own layers falls
+through to the exported content of the package's dependencies
+(<<module-composite>>), so a package transparently serves dependency
+content it does not shadow. Resolution through layers applies to content
+paths only: non-content paths, such as dataset sources under `data/`,
+bypass the layers and resolve directly at the package root.
+
+=== Tombstones
+
+Deletions do not physically remove files from lower layers. Instead, the
+deleting layer records a tombstone in a `.capsium-tombstones` file: a JSON
+array of content-relative paths, kept at the root of the writable layer:
+
+[source,json]
+----
+["index.html", "images/legacy-banner.png"]
+----
+
+A tombstoned path resolves as absent — requests to it are answered
+`404 Not Found` — even when a lower layer still contains the file.
+Tombstones are honored at and below their own layer: the tombstones
+recorded by a dependent package therefore also suppress dependency content
+that would otherwise fall through to it.
+
+The `.capsium-tombstones` file is a runtime marker file: it is written and
+rewritten by reactors at runtime and is not covered by the pack-time
+checksums of `security.json` (Clause 5, Security). This exception is
+narrow: any other dotfile — for example an `.htpasswd` file
+(<<module-authentication>>) — is normal package content, packed and
+covered by checksums like any other file.
 
 === Conformance
 
 A Capsium package / packager / reactor conforming to class `layered-storage`
-SHALL satisfy requirements layered-storage-1 to layered-storage-5 of this
+SHALL satisfy requirements layered-storage-1 to layered-storage-8 of this
 clause. The conformance class is defined in
 <<conformance-layered-storage>>.

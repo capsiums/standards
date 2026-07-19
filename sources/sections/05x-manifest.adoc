@@ -115,17 +115,17 @@ Private::: Resources marked as `private` are restricted to the current package a
 
 . Usage in Dependent Packages:
 ** Packages that depend on another package can access resources marked as `exported` by including the appropriate references in their own configuration files.
-** Example usage in a dependent package:
+** Example usage in a dependent package — a dependency resource reference of the form `<guid>/<path>` (<<module-composite>>):
 [source,json]
 ----
      {
          "dependencies": {
-             "capsium-core": "1.0.0"
+             "capsium://example.com/capsium-core": "1.0.0"
          },
-         "resources": [
+         "routes": [
              {
-                 "path": "node_modules/capsium-core/scripts/main.js",
-                 "visibility": "exported"
+                 "path": "/vendor/core/main.js",
+                 "resource": "capsium://example.com/capsium-core/scripts/main.js"
              }
          ]
      }

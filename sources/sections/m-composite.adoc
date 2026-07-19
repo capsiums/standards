@@ -1,12 +1,12 @@
 [[module-composite]]
 == Module: Composite packages
 
-The composite packages module bundles multiple Capsium packages into a
-single, cohesive unit. This provides an organized and efficient way to manage
-dependencies, resources, and configurations: a composite package collects
-individual packages under one manifest, remaps their routes to avoid
-conflicts, selectively activates their storage layers, and lets a dependent
-package inherit and process routes exported by its dependencies.
+The composite packages module combines multiple Capsium packages into a
+single, cohesive unit: a package declares dependencies on other packages,
+resolves them from a bundle, a store, or a registry, and re-uses their
+exported content and routes. Dependencies may also be encapsulated —
+embedded as `.cap` files inside the dependent package — so that the whole
+unit is distributed as one artifact.
 
 The field definitions this module builds on remain in the core clause:
 dependencies are declared with the `dependencies` key of `metadata.json`
@@ -18,302 +18,254 @@ dependencies are declared with the `dependencies` key of `metadata.json`
 
 === Additional requirements
 
-. A composite package shall contain a manifest file (`manifest.json`)
-outlining its metadata and dependencies, a `packages` directory containing
-the individual Capsium packages, and configuration files for resource routing
-and storage management.
-. Dependencies between packages shall be specified in the manifest with the
-required packages and any version constraints, using the dependency field
-semantics of `metadata.json` (<<metadata-dependencies>>).
-. HTTP routes and data routes of included packages should be remapped in
-`routes.json` to avoid conflicts and ensure proper integration.
-. Inherited layers from individual packages should be selectively activated
-or deactivated in `storage.json` (`activeLayers` / `inactiveLayers`).
-. Inherited routes shall be declared in the `routes.json` file of the
-dependent package, specifying the package and the original route path; only
-routes and resources marked `exported` may be re-used
-(<<route-visibility>>, <<manifest-visibility>>).
-. The system should support remapping inherited routes, rewriting their
-responses, enhancing their response headers, and supplanting their request
-headers.
+. Dependencies between packages shall be declared in `metadata.json` as an
+object mapping the GUID of each required package to a semantic version
+range (<<metadata-dependencies>>).
+. A dependency resource reference shall take the form `<guid>/<path>`,
+where `<guid>` is any absolute URI (`capsium:`, `https:`, ...) and `<path>`
+is a package-relative path within the referenced package; when several
+declared dependency GUIDs are a prefix of the reference, the longest GUID
+prefix shall win.
+. Dependency packages shall be resolved through the chain _bundle → store →
+registry_: first among the packages encapsulated in the dependent package,
+then in the package store, then in a configured registry
+(<<module-registries>>). For each dependency, the newest available version
+satisfying the declared range shall be selected.
+. A package store shall be a directory containing `<name>-<version>.cap`
+files, optionally with an `index.json` mapping package GUIDs to store
+files.
+. A package may encapsulate its dependencies by embedding their `.cap`
+files under `packages/` and recording them in `packages/index.json`,
+mapping each GUID to its `file`, `version`, and `sha256`. Encapsulated
+files shall be covered by the parent package's checksums; the recorded
+`sha256` shall be re-verified at resolution; each encapsulated package's
+own `security.json` shall be verified at activation. The parent package
+should declare the transitive closure of the dependencies it bundles
+(one-level policy).
+. On activation of a composite package, the `content/` of each resolved
+dependency shall become a lower read-only layer below all of the
+dependent's own layers (<<module-layered-storage>>), and only `exported`
+resources and routes shall be visible to the dependent; a reference to a
+`private` resource or route of a dependency is an error.
+. Inherited routes shall be declared in the `routes.json` of the dependent
+package, referencing the dependency resource (composite-2); the dependent
+may remap the route, rewrite its response, enhance its response headers,
+and supplant its request headers, with the semantics of this clause.
 . Each package within the composite package should have its own digital
 signature, and the composite package itself should also be signed
-(<<module-signatures>>); hashes (e.g., SHA-256) should be used to verify that
-the package contents have not been tampered with.
+(<<module-signatures>>); SHA-256 checksums shall be used to verify that the
+package contents have not been tampered with.
 
-=== Structure (Composite Package of Multiple Capsium Packages)
+=== Structure
 
-A composite package is a structured collection of multiple Capsium packages, each contributing its own functionality and resources. The structure typically includes:
-  * A manifest file (`manifest.json`) that outlines the composite package's metadata and dependencies.
-  * A `packages` directory containing the individual Capsium packages.
-  * Configuration files for resource routing and storage management.
+A composite package is an ordinary Capsium package that declares
+dependencies and, optionally, encapsulates the resolved dependency `.cap`
+files under `packages/` with an index:
 
-Example `manifest.json`:
-[source,json]
 ----
-{
-  "name": "composite-package-example",
-  "version": "1.0.0",
-  "description": "A composite package consisting of multiple Capsium packages.",
-  "packages": [
-    "package1",
-    "package2",
-    "package3"
-  ]
-}
-----
-
-Directory structure:
-```
 composite-package/
+├── metadata.json          # dependencies: guid -> semver range
 ├── manifest.json
-├── packages/
-│   ├── package1/
-│   ├── package2/
-│   └── package3/
-├── routes.json
-└── storage.json
-```
+├── routes.json            # may reference dependency resources
+├── storage.json
+├── content/
+└── packages/              # encapsulated dependencies (optional)
+    ├── index.json
+    ├── core-lib-1.0.0.cap
+    └── theme-pack-2.1.0.cap
+----
 
-=== Specifying Dependencies in Metadata
+`packages/index.json` maps each encapsulated GUID to its file, version, and
+SHA-256 checksum:
 
-Dependencies between Capsium packages within a composite package are specified in the `manifest.json` file. This includes defining which packages are required and any specific versions or constraints. The `dependencies` field itself is defined in the core metadata clause (<<metadata-dependencies>>).
-
-Example `manifest.json` with dependencies:
 [source,json]
 ----
 {
-  "name": "composite-package-example",
-  "version": "1.0.0",
-  "description": "A composite package consisting of multiple Capsium packages.",
-  "packages": [
-    "package1",
-    "package2",
-    "package3"
-  ],
-  "dependencies": {
-    "package1": ">=1.0.0",
-    "package2": "^2.0.0",
-    "package3": "3.x"
+  "packages": {
+    "capsium://example.com/core-lib": {
+      "file": "packages/core-lib-1.0.0.cap",
+      "version": "1.0.0",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    },
+    "https://packages.example.org/theme-pack": {
+      "file": "packages/theme-pack-2.1.0.cap",
+      "version": "2.1.0",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
   }
 }
 ----
 
-=== Resource Routing
+Encapsulated `.cap` files are package content of the parent: they are
+covered by the parent package's pack-time checksums (Clause 5, Security),
+and the `sha256` recorded in `packages/index.json` is re-verified whenever
+the encapsulated package is resolved. At activation, each encapsulated
+package's own `security.json` is verified like that of any other package.
 
-Resource routing in a composite package involves defining how HTTP routes and data routes are managed and potentially remapped to avoid conflicts and ensure proper integration.
+A parent package should declare the transitive closure of the dependencies
+it bundles: every dependency of an encapsulated package should itself be
+declared — and resolved — by the parent (one-level policy).
 
-==== Remapping Included HTTP Routes
+=== Dependency resolution
 
-When combining multiple packages, HTTP routes may need to be remapped to avoid conflicts or to better organize the API endpoints. This is done in the `routes.json` file.
+Dependency resolution selects, for every GUID declared in
+`metadata.dependencies`, the newest available version satisfying the
+declared range, and makes it available to the dependent package. Sources
+are consulted in order:
 
-Example `routes.json` with remapping:
+. Bundle:: the packages encapsulated under `packages/` (composite-5);
+. Store:: a package store directory — for example from the `CAPSIUM_STORE`
+environment variable or a `--store` option — containing
+`<name>-<version>.cap` files and an optional `index.json` mapping GUIDs to
+store files;
+. Registry:: a static registry (<<module-registries>>), from which the
+selected version is installed into the store.
+
+Resolution shall select the newest version satisfying the declared semantic
+version range. Management tooling should detect unresolvable dependencies —
+a missing GUID or a range no available artifact satisfies — and report them
+before activation (<<management-clause>>, Dependency resolution).
+
+=== Dependency resource references
+
+A route, resource, or mount of a dependent package references a resource of
+a dependency with a reference of the form `<guid>/<path>`:
+
+* `<guid>` is the absolute-URI GUID of the dependency as declared in
+`metadata.dependencies` — any absolute URI scheme may be used
+(`capsium://example.com/core-lib`, `https://packages.example.org/theme-pack`,
+...);
+* `<path>` is the package-relative path of the resource within the
+referenced package, for example `content/app.js`.
+
+When several declared GUIDs are a prefix of one another, the reference
+shall be matched against the longest GUID prefix.
+
+Example:
+
+[source,json]
+----
+{
+  "path": "/vendor/core/app.js",
+  "resource": "capsium://example.com/core-lib/content/app.js"
+}
+----
+
+Only `exported` resources and routes of a dependency may be referenced this
+way (<<manifest-visibility>>, <<route-visibility>>); referencing a
+`private` resource or route of a dependency is an error.
+
+=== Layer inheritance
+
+On activation of a composite package, the `content/` directory of each
+resolved dependency becomes a lower read-only layer, below all of the
+dependent package's own layers, and merged resolution follows the rules of
+the layered storage module (<<module-layered-storage>>): the dependent's
+own content shadows dependency content, dependency content serves paths the
+dependent does not provide, and tombstones recorded by the dependent
+suppress dependency content beneath them. Layers a dependency marks
+`private` are not exposed to the dependent.
+
+=== Route inheritance and processing
+
+The dependent package inherits routes from its dependencies by declaring
+them in its own `routes.json` with a dependency resource reference
+(composite-2). Only routes marked `exported` can be inherited
+(<<route-visibility>>). Inherited routes may be processed with the
+following route attributes, whose semantics are:
+
+`remap`::: The effective path at which the route is served, replacing the
+declared `path` for serving.
+`responseRewrite`::: A replacement of the response: the declared `body`
+replaces the response content of the inherited route wholesale, and the
+declared `headers` are merged per-key into the response headers.
+`responseHeaders`::: Headers merged over the serving defaults: each
+declared header is set on the response, overriding the reactor's default
+for that header — including the default `Cache-Control` (<<reactor-clause>>)
+— rather than being applied only when absent.
+`requestHeaders`::: Headers applied to the request when it is forwarded to
+handler execution (<<module-handler-routes>>); for static resource serving
+they have no effect.
+
+Example `routes.json` of a dependent package:
+
 [source,json]
 ----
 {
   "routes": [
     {
-      "originalRoute": "/api/v1/package1/",
-      "remappedRoute": "/api/v1/composite/package1/"
+      "path": "/api/exported",
+      "resource": "capsium://example.com/core-lib/content/api/public.json",
+      "visibility": "exported"
     },
     {
-      "originalRoute": "/api/v1/package2/",
-      "remappedRoute": "/api/v1/composite/package2/"
+      "path": "/api/remapped",
+      "resource": "capsium://example.com/core-lib/content/api/hidden.json",
+      "visibility": "private",
+      "remap": "/api/newpath"
+    },
+    {
+      "path": "/api/rewritten",
+      "resource": "capsium://example.com/core-lib/content/api/raw.json",
+      "visibility": "private",
+      "responseRewrite": {
+        "body": "Modified response content",
+        "headers": {
+          "X-Custom-Header": "CustomValue"
+        }
+      }
+    },
+    {
+      "path": "/api/enhanced",
+      "resource": "capsium://example.com/core-lib/content/api/cached.json",
+      "visibility": "exported",
+      "responseHeaders": {
+        "Cache-Control": "no-cache",
+        "X-Enhanced-Header": "EnhancedValue"
+      }
+    },
+    {
+      "path": "/api/supplanted",
+      "handler": "content/handlers/api.js",
+      "method": "GET",
+      "visibility": "private",
+      "requestHeaders": {
+        "Authorization": "Bearer new-token",
+        "X-Forwarded-For": "client-ip"
+      }
     }
   ]
 }
 ----
 
-==== Remapping Included Data Routes
+By clearly defining and adhering to these visibility, inheritance, and
+processing rules, the Capsium package ensures that resource routing is both
+flexible and secure, enabling effective re-use of routes while protecting
+private routes and allowing for extensive customization.
 
-Similar to HTTP routes, data routes may also need to be remapped to ensure data sources are correctly referenced and do not conflict.
+=== Security, digital signatures, and integrity checks
 
-Example `routes.json` with data route remapping:
-[source,json]
-----
-{
-  "dataRoutes": [
-    {
-      "originalRoute": "/api/v1/data/package1/",
-      "remappedRoute": "/api/v1/data/composite/package1/"
-    },
-    {
-      "originalRoute": "/api/v1/data/package2/",
-      "remappedRoute": "/api/v1/data/composite/package2/"
-    }
-  ]
-}
-----
+Ensuring the security and integrity of a composite package involves digital
+signatures and integrity checks at two levels: the composite package itself
+and every package it encapsulates.
 
-=== Route Inheritance and Processing
+Integrity checks:: The parent package's `security.json` covers every file
+of the parent, including the encapsulated `.cap` files; the `sha256`
+recorded for each encapsulated package in `packages/index.json` is
+re-verified at resolution, and each encapsulated package's own
+`security.json` is verified at activation (Clause 5, Security).
+Digital signatures:: Each package within the composite package should have
+its own digital signature, and the composite package itself should also be
+signed (<<module-signatures>>).
 
-The Capsium package supports inheriting routes from dependency packages, allowing for remapping, rewriting responses, enhancing response headers, or supplanting request headers. This flexibility enables packages to extend and modify the behavior of routes defined in their dependencies. Only routes marked `exported` can be inherited (<<route-visibility>>).
+=== User authentication
 
-Requirements and Specifications::
-
-. Inheriting Routes:
-** Inherited routes must be declared in the `routes.json` file of the dependent package.
-** An inherited route should specify the package and the original route path.
-
-. Remapping Routes:
-** Inherited routes can be remapped to a new path in the dependent package.
-
-. Rewriting Responses:
-** The system should allow for rewriting the response of an inherited route, either by modifying the content or altering the headers.
-
-. Enhancing Response Headers:
-** Additional headers can be added to the response of an inherited route to enhance security, performance, or other attributes.
-
-. Supplanting Request Headers:
-** Request headers can be modified or added before forwarding the request to the inherited route.
-
-. Example Configuration:
-** An example `routes.json` file demonstrating route inheritance and processing:
-[source,json]
-----
-     {
-         "dependencies": {
-             "capsium-core": "1.0.0"
-         },
-         "routes": [
-             {
-                 "path": "/api/exported",
-                 "handler": "node_modules/capsium-core/handlers/publicHandler",
-                 "visibility": "exported"
-             },
-             {
-                 "path": "/api/remapped",
-                 "handler": "node_modules/capsium-core/handlers/publicHandler",
-                 "visibility": "private",
-                 "remap": "/api/newpath"
-             },
-             {
-                 "path": "/api/rewritten",
-                 "handler": "node_modules/capsium-core/handlers/publicHandler",
-                 "visibility": "private",
-                 "responseRewrite": {
-                     "body": "Modified response content",
-                     "headers": {
-                         "X-Custom-Header": "CustomValue"
-                     }
-                 }
-             },
-             {
-                 "path": "/api/enhanced",
-                 "handler": "node_modules/capsium-core/handlers/publicHandler",
-                 "visibility": "exported",
-                 "responseHeaders": {
-                     "Cache-Control": "no-cache",
-                     "X-Enhanced-Header": "EnhancedValue"
-                 }
-             },
-             {
-                 "path": "/api/supplanted",
-                 "handler": "node_modules/capsium-core/handlers/publicHandler",
-                 "visibility": "private",
-                 "requestHeaders": {
-                     "Authorization": "Bearer new-token",
-                     "X-Forwarded-For": "client-ip"
-                 }
-             }
-         ]
-     }
-----
-
-By clearly defining and adhering to these visibility, inheritance, and processing rules, the Capsium package ensures that resource routing is both flexible and secure, enabling effective re-use of routes while protecting private routes and allowing for extensive customization.
-
-=== Storage
-
-Storage configurations in a composite package involve managing and potentially customizing which layers from included packages are activated or deactivated. Layers and their visibility are defined by the layered storage module (<<module-layered-storage>>).
-
-==== Selecting Inherited Layers to Activate / Deactivate
-
-Inherited layers from individual packages can be selectively activated or deactivated based on the needs of the composite package. This is specified in the `storage.json` file.
-
-Example `storage.json`:
-[source,json]
-----
-{
-  "storage": {
-    "activeLayers": [
-      "package1.layer1",
-      "package2.layer2"
-    ],
-    "inactiveLayers": [
-      "package3.layer3"
-    ]
-  }
-}
-----
-
-=== Security, Digital Signatures, and Integrity Checks
-
-Ensuring the security and integrity of a composite package involves the use of digital signatures and integrity checks. Each package within the composite package should have its own digital signature, and the composite package itself should also be signed (<<module-signatures>>).
-
-Digital Signatures:: Each package and the composite package should be signed using a cryptographic key to ensure authenticity.
-Integrity Checks:: Hashes (e.g., SHA-256) should be used to verify that the package contents have not been tampered with.
-
-Example `manifest.json` with signatures and hashes:
-[source,json]
-----
-{
-  "name": "composite-package-example",
-  "version": "1.0.0",
-  "description": "A composite package consisting of multiple Capsium packages.",
-  "packages": [
-    {
-      "name": "package1",
-      "version": "1.0.0",
-      "hash": "sha256-abcdef1234567890...",
-      "signature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-    },
-    {
-      "name": "package2",
-      "version": "2.1.0",
-      "hash": "sha256-12345abcdef67890...",
-      "signature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-    }
-  ],
-  "compositeSignature": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-}
-----
-
-=== User Authentication
-
-User authentication in a composite package ensures that only authorized users can access the resources and data provided by the included packages. This is typically managed via an authentication service that supports various authentication methods such as OAuth, JWT, or API keys. The package-side authentication configuration is defined by the authentication module (<<module-authentication>>).
-
-OAuth:: Use OAuth 2.0 for user authentication, allowing users to log in using their existing credentials from an OAuth provider (e.g., Google, Facebook).
-JWT:: Implement JSON Web Tokens (JWT) for stateless authentication. Tokens are issued upon successful login and are included in subsequent requests to verify user identity.
-API Keys:: Use API keys for application-level access control. API keys are issued to applications and are included in API requests for authentication.
-
-Example `auth.json` configuration:
-[source,json]
-----
-{
-  "authentication": {
-    "methods": ["OAuth", "JWT", "APIKey"],
-    "OAuth": {
-      "provider": "https://oauth.example.com",
-      "clientId": "your-client-id",
-      "clientSecret": "your-client-secret"
-    },
-    "JWT": {
-      "secret": "your-jwt-secret",
-      "issuer": "your-issuer",
-      "audience": "your-audience"
-    },
-    "APIKey": {
-      "headerName": "X-API-Key",
-      "validKeys": ["key1", "key2", "key3"]
-    }
-  }
-}
-----
-
-By configuring these options, a composite package can ensure robust security and proper access control across all included packages. This structured approach helps maintain the integrity of the composite package while providing a seamless experience for end-users.
+A composite package may apply user authentication to its own routes and to
+inherited routes. The package-side authentication configuration is defined
+by the authentication module (<<module-authentication>>).
 
 === Conformance
 
-A Capsium package / packager / reactor conforming to class `composite` SHALL
-satisfy requirements composite-1 to composite-7 of this clause. The
+A Capsium package / packager / reactor conforming to class `composite`
+SHALL satisfy requirements composite-1 to composite-8 of this clause. The
 conformance class is defined in <<conformance-composite>>.

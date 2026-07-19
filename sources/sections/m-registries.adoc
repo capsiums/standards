@@ -1,0 +1,161 @@
+[[module-registries]]
+== Module: Registries
+
+The registries module defines the static Capsium registry: a distribution
+point from which Capsium packages are published, resolved, and installed. A
+registry is a plain directory or a static HTTPS endpoint — it requires no
+server-side logic beyond file serving — so packages can be distributed from
+any web server, object store, or filesystem directory.
+
+Registries are optional: a conformant core package, packager, or reactor
+works without them, activating packages from local `.cap` files or package
+directories. A package, packager, or reactor that claims the `registries`
+module shall satisfy the additional requirements of this clause.
+
+=== Additional requirements
+
+. A Capsium registry shall be a directory or an HTTPS base URL containing an
+`index.json` file at its root, structured as specified in this clause
+(<<registry-index>>).
+. Each package version listed in the index shall be stored as a `.cap` file
+at a path relative to the registry root, with the SHA-256 checksum and size
+in bytes recorded in the index entry.
+. When a registry is accessed over the network, HTTPS shall be used; plain
+HTTP shall only be accepted for loopback addresses (`localhost`,
+`127.0.0.0/8`, `::1`).
+. A registry write (`push`) shall validate the package, copy the `.cap` file
+into the registry, recompute the SHA-256 checksum and size of the copied
+file, and rewrite `index.json` atomically (write to a temporary file,
+then rename) so that readers never observe a partially written index.
+. Resolution of a package reference against a registry shall select the
+newest indexed version that satisfies the requested semantic version range
+(<<metadata-dependencies>>).
+. Installation from a registry shall download the selected `.cap` file,
+verify its SHA-256 checksum against the index entry, reject the download on
+mismatch, and install the verified file into a package store under the name
+`<name>-<version>.cap`, updating the store index (<<module-composite>>).
+. Mounts and dependencies may reference a package by a `capsium://` URI of
+its GUID; such references shall be resolved through the resolution chain
+_bundle → store → registry_ defined by the composite packages module
+(<<module-composite>>).
+
+[[registry-index]]
+=== Registry layout
+
+A registry root contains an `index.json` file mapping the GUID of every
+published package to its name and to the set of published versions. Each
+version entry records the `.cap` file path (relative to the registry root),
+its SHA-256 checksum, and its size in bytes:
+
+[source,json]
+----
+{
+  "packages": {
+    "capsium://example.com/hello-world": {
+      "name": "hello-world",
+      "versions": {
+        "1.0.0": {
+          "file": "hello-world-1.0.0.cap",
+          "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "size": 20480
+        },
+        "1.1.0": {
+          "file": "hello-world-1.1.0.cap",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size": 21504
+        }
+      }
+    }
+  }
+}
+----
+
+Requirements and specifications:
+
+. The `packages` object shall be keyed by the package GUID in URI format
+(Clause 5, Identifier).
+. Each package entry shall carry the package `name` from `metadata.json` and
+a `versions` object keyed by the semantic version string.
+. Each version entry shall carry:
+`file`::: the path of the `.cap` file, relative to the registry root;
+`sha256`::: the SHA-256 checksum of the `.cap` file, as a lowercase
+hexadecimal string;
+`size`::: the size of the `.cap` file in bytes, as an integer.
+. Registry clients shall treat `index.json` as the single source of truth
+for the contents of the registry: a `.cap` file present in the registry but
+absent from the index is not installable.
+
+Because a registry is static content, it can be served by any web server or
+object store capable of serving files over HTTPS, or used directly as a
+filesystem directory. A registry served over HTTPS is read-only: the push
+operation applies to filesystem directory registries.
+
+=== Registry operations
+
+==== Push
+
+Publishing a package to a registry (`push`) shall:
+
+. Validate the package as specified in <<management-clause>> (Validation); an
+invalid package shall not be published.
+. Copy the `.cap` file into the registry at its index-recorded path.
+. Recompute the SHA-256 checksum and size of the copied file (rather than
+trusting caller-supplied values).
+. Rewrite `index.json` atomically — serialize the updated index to a
+temporary file in the same directory, then rename it over `index.json` — so
+that concurrent readers always see either the previous or the updated index,
+never a partial one.
+
+==== Resolve
+
+Resolution maps a package GUID and a semantic version range to a concrete
+version entry of the index:
+
+. The resolver shall consider every version indexed under the GUID.
+. Among the versions satisfying the requested range (<<metadata-dependencies>>),
+the resolver shall select the newest (highest) version.
+. When no indexed version satisfies the range, resolution shall fail and the
+failure shall be reported to the caller.
+
+==== Install
+
+Installation transfers a resolved package version from a registry into a
+local package store (<<module-composite>>):
+
+. The installer shall download the `.cap` file recorded in the resolved
+index entry.
+. The installer shall verify the SHA-256 checksum of the downloaded file
+against the `sha256` of the index entry and shall reject the download on
+mismatch; a rejected file shall not be installed.
+. The verified file shall be installed into the store as
+`<name>-<version>.cap`, and the store index shall be updated accordingly.
+
+=== Referencing packages from a registry
+
+A package stored in a registry is referenced by the `capsium://` URI of its
+GUID, both in dependency declarations (<<metadata-dependencies>>) and in
+reactor mount maps (<<reactor-clause>>). Resolution of such references
+follows the _bundle → store → registry_ chain of the composite packages
+module (<<module-composite>>): a reference is first looked up among the
+packages bundled with the referring package, then in the local package
+store, and finally installed from a configured registry.
+
+=== Command-line interface (informative)
+
+The following commands of the `capsium` CLI (Annex A) illustrate the
+registry operations:
+
+[source,bash]
+----
+capsium package push example-package-1.0.0.cap --registry /srv/registry
+capsium install capsium://example.com/hello-world \
+    --constraint ">=1.0.0" --registry https://registry.example.com \
+    --store ~/.capsium/store
+capsium reactor serve capsium://example.com/hello-world
+----
+
+=== Conformance
+
+A Capsium package / packager / reactor conforming to class `registries`
+SHALL satisfy requirements registries-1 to registries-7 of this clause. The
+conformance class is defined in <<conformance-registries>>.

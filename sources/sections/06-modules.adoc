@@ -70,6 +70,18 @@ defines the following modules:
 | The YAML test DSL for routes, files, data, and configuration
 | Capsium testing
 | <<module-testing>>
+
+| `registries`
+| Registries
+| Static registries for publishing, resolving, and installing packages
+| Capsium registries
+| <<module-registries>>
+
+| `writable-packages`
+| Writable packages
+| Reactor-side overlay writes, dataset CRUD and GraphQL APIs, and save
+| Capsium writable-packages
+| <<module-writable-packages>>
 |===
 
 === Claiming modules
