@@ -80,7 +80,7 @@ Example GitHub Pages setup:
 1. Create a GitHub repository.
 2. Push your Capsium package to the repository.
 3. Enable GitHub Pages in the repository settings.
-4. Access your package at `https://<username>.github.io/<repository>/`.
+4. Access your package at \https://<username>.github.io/<repository>/.
 ```
 
 === HTTP API for Introspection of Reactor
