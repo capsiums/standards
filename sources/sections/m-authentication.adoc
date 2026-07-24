@@ -108,7 +108,8 @@ Secret Protection:: The OAuth secret must be kept protected from users who can e
 
 ===== Configuration Details in `oauth_config.json`
 
-```json
+[source,json]
+----
 {
   "oauth": {
     "provider": "Google",
@@ -119,7 +120,7 @@ Secret Protection:: The OAuth secret must be kept protected from users who can e
     "stateSecret": "YOUR_STATE_SECRET"
   }
 }
-```
+----
 
 ===== Secret Protection
 
@@ -135,7 +136,8 @@ Here is a combined configuration example that includes general requirements, Apa
 
 `authentication.json`
 
-```json
+[source,json]
+----
 {
   "authentication": {
     "general": {
@@ -170,7 +172,7 @@ Here is a combined configuration example that includes general requirements, Apa
     }
   }
 }
-```
+----
 
 general::: Specifies general authentication requirements, including password policy, account lockout, session management, and encryption.
 apache::: Details Apache authentication configuration, including the path to the `.htpasswd` file and the encryption algorithm used for passwords.

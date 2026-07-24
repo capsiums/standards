@@ -103,7 +103,8 @@ schemaFile::: Path to the schema file (JSON Schema or YAML Schema).
 schemaType::: Type of the schema (e.g., "json-schema" or "yaml-schema").
 
 Example structure:
-```json
+[source,json]
+----
 {
   "datasets": [
     {
@@ -120,10 +121,11 @@ Example structure:
     }
   ]
 }
-```
+----
 
 Here's an example of a JSON schema for validating a dataset of user information:
-```json
+[source,json]
+----
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
@@ -143,10 +145,11 @@ Here's an example of a JSON schema for validating a dataset of user information:
   },
   "required": ["users"]
 }
-```
+----
 
 Here's an example of a YAML schema for validating a dataset of user information:
-```yaml
+[source,yaml]
+----
 %YAML 1.2
 ---
 $schema: "http://json-schema.org/draft-07/schema#"
@@ -170,7 +173,7 @@ properties:
         - email
 required:
   - users
-```
+----
 
 ===== SQLite database
 
@@ -186,7 +189,8 @@ schemaType::: Type of the schema (e.g., "sql-schema" or "json-schema").
 table::: Name of the table in the SQLite database that the dataset corresponds to.
 
 Example structure:
-```json
+[source,json]
+----
 {
   "datasets": [
     {
@@ -205,21 +209,23 @@ Example structure:
     }
   ]
 }
-```
+----
 
 
 Here's an example of an SQL schema for a table of user information:
-```sql
+[source,sql]
+----
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE
 );
-```
+----
 
 
 Here's an example of a JSON schema for validating the structure of a table of user information:
-```json
+[source,json]
+----
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
@@ -230,7 +236,7 @@ Here's an example of a JSON schema for validating the structure of a table of us
   },
   "required": ["id", "name", "email"]
 }
-```
+----
 
 
 ===== Validation
@@ -266,11 +272,12 @@ status::: 200 OK on success.
 body::: An array of data items.
 
 Example:
-```json
+[source,json]
+----
 {
   "datasetId": "dataset1"
 }
-```
+----
 
 ===== GET (Fetch Single Data Item)
 
@@ -287,12 +294,13 @@ status::: 200 OK on success.
 body::: The requested data item.
 
 Example:
-```json
+[source,json]
+----
 {
   "datasetId": "dataset1",
   "dataId": "dataItem42"
 }
-```
+----
 
 ===== POST (Create Data Item)
 
@@ -309,7 +317,8 @@ status::: 201 Created on success.
 body::: The created data item with its new identifier.
 
 Example:
-```json
+[source,json]
+----
 {
   "datasetId": "dataset1",
   "data": {
@@ -317,7 +326,7 @@ Example:
     "key2": 123
   }
 }
-```
+----
 
 ===== PUT (Update Data Item)
 
@@ -335,7 +344,8 @@ status::: 200 OK on success.
 body::: The updated data item.
 
 Example:
-```json
+[source,json]
+----
 {
   "datasetId": "dataset1",
   "dataId": "dataItem42",
@@ -344,7 +354,7 @@ Example:
     "key2": 456
   }
 }
-```
+----
 
 ===== DELETE (Delete Data Item)
 
@@ -360,12 +370,13 @@ Response::
 status::: 204 No Content on success.
 
 Example:
-```json
+[source,json]
+----
 {
   "datasetId": "dataset1",
   "dataId": "dataItem42"
 }
-```
+----
 
 ==== Data Persistence
 
@@ -400,7 +411,8 @@ dataId::: The identifier of the data item affected by the action. Should be a st
 changes::: A JSON object detailing the changes made. The format depends on the type of action.
 
 Example:
-```json
+[source,json]
+----
 {
   "timestamp": "2024-05-28T12:34:56Z",
   "user": "user123",
@@ -411,7 +423,7 @@ Example:
     "key1": "newValue"
   }
 }
-```
+----
 
 ===== Action history folder
 
@@ -423,12 +435,12 @@ Filename Convention::: Each file name should be unique and can be based on the t
 File Content::: Each file must contain a valid action patch JSON object as specified above.
 
 Example:
-```
+----
 action-history/
   ├── 20240528T123456Z_user123_update_dataItem42.json
   ├── 20240529T101112Z_user456_add_dataItem43.json
   └── ...
-```
+----
 
 Additional requirements for the action history folder:
 
@@ -437,7 +449,8 @@ Backup::: Regular backups of the action history folder should be maintained to p
 Versioning::: Each action patch should include a version attribute to manage changes to the action patch schema.
 
 Example of an action patch with versioning:
-```json
+[source,json]
+----
 {
   "version": "1.0",
   "timestamp": "2024-05-28T12:34:56Z",
@@ -449,7 +462,7 @@ Example of an action patch with versioning:
     "key1": "newValue"
   }
 }
-```
+----
 
 ===== Saving Data Changes in Datasets to a New External Capsium Package
 
@@ -462,13 +475,14 @@ newPackageId::: The identifier for the new external Capsium package. Must be a s
 actionHistoryLocation::: The location of the action history folder. Must be a valid path.
 
 Example:
-```json
+[source,json]
+----
 {
   "originalPackageId": "capsiumPkg1",
   "newPackageId": "capsiumPkg2",
   "actionHistoryLocation": "/path/to/action-history"
 }
-```
+----
 
 The process for saving data changes includes the following steps:
 
@@ -479,7 +493,8 @@ The process for saving data changes includes the following steps:
 . Validate Package: Ensure that the new package meets all Capsium package requirements and is properly versioned.
 
 Example process:
-```shell
+[source,shell]
+----
 # Collect action patches
 cp /path/to/action-history/* /new-package/action-history/
 
@@ -493,7 +508,7 @@ mv /new-package/storage_tmp.json /new-package/storage.json
 
 # Validate package
 capsium-validate /new-package
-```
+----
 
 Additional considerations for creating a new external Capsium package:
 
@@ -502,19 +517,21 @@ Documentation:: Update the package documentation to reflect the changes and new 
 Notification:: Notify users or systems that depend on the package about the update to the new package.
 
 Example of integrity check:
-```shell
+[source,shell]
+----
 capsium-check-integrity /new-package
-```
+----
 
 Example of updating documentation:
-```markdown
+[source,markdown]
+----
 # Capsium Package Documentation
 
 ## Package ID: capsiumPkg2
 Description:: This package includes updated datasets from capsiumPkg1 with action patches applied.
 Version:: 2.0
 Action History Location:: /new-package/action-history
-```
+----
 
 ===== Saving Data Changes in Datasets in a Composite Capsium Package That Contains the Current Package
 
@@ -527,13 +544,14 @@ compositePackageId::: The identifier for the composite Capsium package. Must be 
 internalActionHistoryPath::: The path to the action history folder within the composite Capsium package. Must be a valid internal path.
 
 Example:
-```json
+[source,json]
+----
 {
   "originalPackageId": "capsiumPkg1",
   "compositePackageId": "compositeCapsiumPkg1",
   "internalActionHistoryPath": "internal/action-history"
 }
-```
+----
 
 The process for saving data changes in a composite Capsium package includes the following steps:
 
@@ -544,7 +562,8 @@ The process for saving data changes in a composite Capsium package includes the 
 . Validate Package: Ensure that the composite package meets all Capsium package requirements and is properly versioned.
 
 Example process:
-```shell
+[source,shell]
+----
 # Collect action patches
 cp /path/to/action-history/* /composite-package/internal/action-history/
 
@@ -558,7 +577,7 @@ mv /composite-package/storage_tmp.json /composite-package/storage.json
 
 # Validate package
 capsium-validate /composite-package
-```
+----
 
 Additional considerations for creating a composite Capsium package:
 
@@ -567,7 +586,8 @@ Namespace Handling::: Manage namespaces to avoid conflicts between datasets from
 Testing::: Thoroughly test the composite package to ensure that the data changes are correctly applied and all functionalities work as expected.
 
 Example of dependency management:
-```json
+[source,json]
+----
 {
   "compositePackageId": "compositeCapsiumPkg1",
   "dependencies": [
@@ -578,25 +598,27 @@ Example of dependency management:
   ],
   "internalActionHistoryPath": "internal/action-history"
 }
-```
+----
 
 Example of namespace handling:
-```json
+[source,json]
+----
 {
   "datasetNamespaces": {
     "capsiumPkg1": "namespace1",
     "compositeCapsiumPkg1": "namespace2"
   }
 }
-```
+----
 
 Example of testing script:
-```shell
+[source,shell]
+----
 # Test script for composite package
 capsium-test /composite-package
 
 # Validate composite package
 capsium-validate /composite-package
-```
+----
 
 
