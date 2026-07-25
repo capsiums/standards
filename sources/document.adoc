@@ -1,12 +1,12 @@
 = Common architecture for portable secure information interchange and unified management (Capsium)
 :docnumber: 62001
-:copyright-year: 2024
+:copyright-year: 2026
 :language: en
 :doctype: standard
 :edition: 1
-:status: working-draft
-:revdate: 2024-05-27
-:published-date: 2024-05-27
+:status: published
+:revdate: 2026-07-25
+:published-date: 2026-07-25
 :script: Latn
 :technical-committee: VCARD
 :fullname: Ronald Tse
