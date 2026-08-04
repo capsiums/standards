@@ -111,14 +111,58 @@ before dispatching; a mismatch is answered `405 Method Not Allowed` with an
 `Allow` header. A module that fails to import, or a handler that throws or
 rejects, is answered `502 Bad Gateway`.
 
-Sandboxing guidance:: Handlers are package-supplied code and should be
-executed with least privilege. Browser-based reactors should execute
-handlers inside a service worker or an equivalent isolated browsing
-context, with a restrictive Content Security Policy (for example,
-`default-src 'self'`, no `unsafe-eval`) so that a handler can only reach
-the resources of its own package. A reactor without such a JavaScript
-execution contract shall not attempt to run handlers and shall answer
-`501 Not Implemented`.
+=== Sandbox enforcement
+
+Handler code is package-supplied. A reactor claiming this module
+SHALL execute handlers with least privilege as follows:
+
+. *Opaque origin.* The handler module SHALL execute in a context
+whose origin is opaque (an opaque origin per https://html.spec.whatwg.org/multipage/origin.html#concept-origin-opaque[HTML
+§origin]). In practice this means a service worker (browser
+reactors), a `data:`/`blob:` URL import (Node/Deno/Bun), or a
+dedicated Worker / `child_process` (host reactors).
+
+. *No extension APIs.* The handler SHALL NOT have access to the
+host's extension or platform APIs (no `chrome.*`, no
+`browser.*`, no `process.env`, no `Bun.*`, no `Deno.*` on
+host reactors — except where the reactor's deployment
+documentation explicitly grants a capability).
+
+. *CSP profile.* A browser reactor SHALL apply a restrictive
+Content Security Policy to the handler context: minimum
+`default-src 'self'`, no `'unsafe-eval'`, no `'unsafe-inline'`
+for scripts. `connect-src` MAY be opened to external hosts
+when the package's `metadata.json` declares them under
+`handler.allowConnectSrc` (a string array); otherwise
+`connect-src 'self'`.
+
+. *Capability grant.* A reactor MAY grant additional capabilities
+beyond the defaults (e.g. filesystem read of one directory) when
+the package's `metadata.json` declares them under
+`handler.capabilities` (an array of capability tokens defined in
+<<handler-capabilities>>). Granting a capability not declared in
+the package is non-conformant.
+
+. *No sandbox, no execution.* A reactor that cannot satisfy
+requirements 1–3 above SHALL NOT attempt to execute handlers
+and SHALL answer every handler route with `501 Not Implemented`,
+exactly as a reactor that does not claim this module.
+
+[[handler-capabilities]]
+==== Declared capabilities
+
+The `handler.capabilities` field in `metadata.json` MAY name
+additional capabilities the package requests. Recognized tokens:
+
+* `"fetch:external"` — open `connect-src` to any origin.
+* `"fetch:<host>"` — open `connect-src` to one specific host
+  (e.g. `"fetch:api.github.com"`).
+* `"storage:opfs"` — read/write access to Origin Private File
+  System (browser reactors only).
+
+A reactor SHALL ignore capability tokens it does not recognize
+(silent no-op), and SHALL document in its README which tokens
+it grants.
 
 === Conformance
 
